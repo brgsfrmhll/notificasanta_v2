@@ -306,83 +306,65 @@ def create_notification(data: Dict, uploaded_files: Optional[List[Any]] = None) 
     finally:
         pass # Não fecha a conexão
 
-def update_notification(data: Dict, uploaded_files: Optional[List[Any]] = None) -> Dict:
+def update_notification(notification_id: int, updates: Dict):
     """
-    Atualiza um registro de notificação no banco de dados e seus anexos iniciais,
-    invalidando o cache de notificações.
+    Atualiza um registro de notificação, invalidando o cache de notificações.
     """
     conn = get_db_connection()
-    notification_id = None
     try:
         cur = conn.cursor()
 
-        occurrence_date_iso = data.get('occurrence_date').isoformat() if isinstance(data.get('occurrence_date'), dt_date_class) else None
-        occurrence_time_str = data.get('occurrence_time').isoformat() if isinstance(data.get('occurrence_time'), dt_time_class) else None
+        set_clauses = []
+        values = []
 
-        cur.execute("""
-            INSERT INTO notifications (
-                title, description, location, occurrence_date, occurrence_time,
-                reporting_department, reporting_department_complement, notified_department,
-                notified_department_complement, event_shift, immediate_actions_taken,
-                immediate_action_description, patient_involved, patient_id, patient_outcome_obito,
-                additional_notes, status, created_at
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            RETURNING id
-        """, (
-            data.get('title', '').strip(),
-            data.get('description', '').strip(),
-            data.get('location', '').strip(),
-            occurrence_date_iso,
-            occurrence_time_str,
-            data.get('reporting_department', '').strip(),
-            data.get('reporting_department_complement', '').strip(),
-            data.get('notified_department', '').strip(),
-            data.get('notified_department_complement', '').strip(),
-            data.get('event_shift', UI_TEXTS.selectbox_default_event_shift),
-            data.get('immediate_actions_taken') == "Sim",
-            data.get('immediate_action_description', '').strip() if data.get('immediate_actions_taken') == "Sim" else None,
-            data.get('patient_involved') == "Sim",
-            data.get('patient_id', '').strip() if data.get('patient_involved') == "Sim" else None,
-            (True if data.get('patient_outcome_obito') == "Sim" else False if data.get('patient_outcome_obito') == "Não" else None) if data.get('patient_involved') == "Sim" else None,
-            data.get('additional_notes', '').strip(),
-            "pendente_classificacao",
-            datetime.now().isoformat()
-        ))
-        notification_id = cur.fetchone()[0]
+        column_mapping = {
+            'immediate_actions_taken': lambda x: True if x == "Sim" else False if x == "Não" else None,
+            'patient_involved': lambda x: True if x == "Sim" else False if x == "Não" else None,
+            'patient_outcome_obito': lambda x: (True if x == "Sim" else False if x == "Não" else None),
+            'occurrence_date': lambda x: x.isoformat() if isinstance(x, dt_date_class) else x,
+            'occurrence_time': lambda x: x.isoformat() if isinstance(x, dt_time_class) else x,
+            'classification': lambda x: json.dumps(x) if x is not None else None,
+            'rejection_classification': lambda x: json.dumps(x) if x is not None else None,
+            'review_execution': lambda x: json.dumps(x) if x is not None else None,
+            'approval': lambda x: json.dumps(x) if x is not None else None,
+            'rejection_approval': lambda x: json.dumps(x) if x is not None else None,
+            'rejection_execution_review': lambda x: json.dumps(x) if x is not None else None,
+            'conclusion': lambda x: json.dumps(x) if x is not None else None,
+            'executors': lambda x: x # psycopg2 lida bem com arrays Python para INTEGER[]
+        }
 
-        if uploaded_files:
-            for file in uploaded_files:
-                saved_file_info = save_uploaded_file_to_disk(file, notification_id)
-                if saved_file_info:
-                    cur.execute("""
-                        INSERT INTO notification_attachments (notification_id, unique_name, original_name)
-                        VALUES (%s, %s, %s)
-                    """, (notification_id, saved_file_info['unique_name'], saved_file_info['original_name']))
+        for key, value in updates.items():
+            if key not in ['id', 'created_at', 'attachments', 'actions', 'history']:
+                if key in column_mapping:
+                    set_clauses.append(sql.Identifier(key) + sql.SQL(' = %s'))
+                    values.append(column_mapping[key](value))
+                else:
+                    set_clauses.append(sql.Identifier(key) + sql.SQL(' = %s'))
+                    values.append(value)
 
-        add_history_entry(
-            notification_id,
-            "Notificação criada",
-            "Sistema (Formulário Público)",
-            f"Notificação enviada para classificação. Título: {data.get('title', 'Sem título')[:100]}..." if len(
-                data.get('title', '')) > 100 else f"Notificação enviada para classificação. Título: {data.get('title', 'Sem título')}",
-            conn=conn,
-            cursor=cur
+        if not set_clauses:
+            return None
+
+        query = sql.SQL("UPDATE notifications SET {} WHERE id = %s").format(
+            sql.SQL(', ').join(set_clauses)
         )
+        values.append(notification_id)
 
+        cur.execute(query, values)
         conn.commit()
         cur.close()
-        load_notifications.clear() # Invalida o cache de notificações após a criação
+        load_notifications.clear() # Invalida o cache de notificações após a atualização
 
         # Retorna a notificação completa para consistência (recarrega do cache)
         all_notifications_cached = load_notifications()
-        created_notification = next((n for n in all_notifications_cached if n['id'] == notification_id), None)
-        return created_notification
+        updated_notification = next((n for n in all_notifications_cached if n['id'] == notification_id), None)
+        return updated_notification
 
     except psycopg2.Error as e:
-        st.error(f"Erro ao criar notificação: {e}")
+        st.error(f"Erro ao atualizar notificação: {e}")
         if conn:
             conn.rollback()
-        return {}
+        return None
     finally:
         pass # Não fecha a conexão
 
@@ -533,7 +515,7 @@ def add_notification_action(notification_id: int, action_data: Dict, conn=None, 
         return True
     except psycopg2.Error as e:
         st.error(f"Erro ao adicionar ação para notificação {notification_id}: {e}")
-        if local_conn and not local_conn.closed and not (conn and cursor):
+        if local_conn and not local_conn.closed and not (conn and cur):
             local_conn.rollback()
         return False
     finally:
@@ -861,6 +843,7 @@ def show_sidebar():
         st.markdown("---")
 
         # Verifica se o usuário está logado
+        # Esta verificação é segura agora, pois st.session_state.authenticated é inicializado antes de show_sidebar ser chamado.
         if st.session_state.authenticated and st.session_state.user:
             st.markdown(f"""
             <div class="user-info">
@@ -909,11 +892,11 @@ def show_sidebar():
                 logout_user() # Esta função já chama st.switch_page
 
         else:
-            st.markdown("### 🔐 Login do Operador")
+            st.markdown("### �� Login do Operador")
             with st.form("sidebar_login_form"):
                 username = st.text_input("Usuário", key="sidebar_username_form")
                 password = st.text_input("Senha", type="password", key="sidebar_password_form")
-                if st.form_submit_button("🔑 Entrar", use_container_width=True):
+                if st.form_submit_button("�� Entrar", use_container_width=True):
                     user = authenticate_user(st.session_state.sidebar_username_form,
                                              st.session_state.sidebar_password_form)
                     if user:
@@ -1096,10 +1079,21 @@ def init_database():
 
 # Main execution logic for the app
 def main_app_logic():
-    # 1. Sempre exibir a sidebar primeiro para garantir que a UI básica seja desenhada.
+    # 1. Inicializa st.session_state para autenticação e outros dados
+    # ESTE BLOCO DEVE VIR PRIMEIRO PARA GARANTIR QUE AS CHAVES EXISTAM ANTES DE QUALQUER ACESSO.
+    if 'authenticated' not in st.session_state: st.session_state.authenticated = False
+    if 'user' not in st.session_state: st.session_state.user = None
+    if 'initial_classification_state' not in st.session_state: st.session_state.initial_classification_state = {}
+    if 'review_classification_state' not in st.session_state: st.session_state.review_classification_state = {}
+    if 'current_initial_classification_id' not in st.session_state: st.session_state.current_initial_classification_id = None
+    if 'current_review_classification_id' not in st.session_state: st.session_state.current_review_classification_id = None
+    if 'approval_form_state' not in st.session_state: st.session_state.approval_form_state = {}
+    if 'redirect_done' not in st.session_state: st.session_state.redirect_done = False
+    
+    # 2. Sempre exibir a sidebar primeiro para garantir que a UI básica seja desenhada.
     show_sidebar()
 
-    # 2. Inicializar o banco de dados e tratar erros críticos.
+    # 3. Inicializar o banco de dados e tratar erros críticos.
     #    Se init_database falhar, exibe uma mensagem de erro na UI já desenhada e para.
     try:
         init_database()
@@ -1108,21 +1102,8 @@ def main_app_logic():
         st.info("Por favor, verifique a conexão com o banco de dados e tente novamente.")
         st.stop() # Para a execução após exibir a mensagem de erro na UI.
 
-    # 3. Inicializa st.session_state para autenticação e outros dados
-    if 'authenticated' not in st.session_state: st.session_state.authenticated = False
-    if 'user' not in st.session_state: st.session_state.user = None
-    if 'initial_classification_state' not in st.session_state: st.session_state.initial_classification_state = {}
-    if 'review_classification_state' not in st.session_state: st.session_state.review_classification_state = {}
-    if 'current_initial_classification_id' not in st.session_state: st.session_state.current_initial_classification_id = None
-    if 'current_review_classification_id' not in st.session_state: st.session_state.current_review_classification_id = None
-    if 'approval_form_state' not in st.session_state: st.session_state.approval_form_state = {}
-    
-    # Flag para controlar o redirecionamento inicial. Evita loop de redirecionamento.
-    if 'redirect_done' not in st.session_state:
-        st.session_state.redirect_done = False
-
-    # Redirecionamento inicial para a página de criação de notificação se não autenticado
-    # e ainda não foi redirecionado nesta sessão.
+    # 4. Redirecionamento inicial para a página de criação de notificação se não autenticado
+    #    e ainda não foi redirecionado nesta sessão.
     # sys.argv[0] contém o caminho do script que foi executado para iniciar o Streamlit.
     # os.path.basename() extrai o nome do arquivo (ex: "streamlit_app.py").
     current_script_name = os.path.basename(sys.argv[0])
