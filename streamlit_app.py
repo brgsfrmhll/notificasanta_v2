@@ -14,7 +14,6 @@ from psycopg2 import sql
 
 # Importa as constantes e as funções utilitárias que serão compartilhadas
 from constants import UI_TEXTS, FORM_DATA, DEADLINE_DAYS_MAPPING, DATA_DIR, ATTACHMENTS_DIR
-# Importa funções específicas do utils.py
 from utils import _reset_form_state, _clear_execution_form_state, _clear_approval_form_state, get_deadline_status, format_date_time_summary, display_notification_full_details, save_uploaded_file_to_disk, get_attachment_data
 
 # --- Configuração do Banco de Dados ---
@@ -25,31 +24,32 @@ DB_CONFIG = {
     "password": "6105/*"
 }
 
-@st.cache_resource(ttl=3600) # Cache para a conexão do banco de dados (1 hora)
+@st.cache_resource(ttl=3600) # Cache para a conexão do banco de dados (1 hora). O teste de vida abaixo a mantém fresca.
 def get_db_connection():
     """
     Estabelece e retorna uma conexão com o banco de dados PostgreSQL.
-    Cachado com st.cache_resource para evitar múltiplas conexões.
+    Adiciona um teste de vida para garantir que a conexão não esteja fechada.
     """
     try:
         conn = psycopg2.connect(**DB_CONFIG)
-        # Opcional: Adicionar um teste simples para a conexão antes de retorná-la
-        # para lidar com conexões que podem ter ficado "stale" devido a timeouts de rede, etc.
-        # Isso forçaria o cache a recriar a conexão se a existente estiver inativa.
-        # conn.cursor().execute("SELECT 1")
+        # Teste de vida da conexão: executa uma consulta simples.
+        # Se a conexão estiver fechada ou inativa, isso gerará uma exceção.
+        conn.cursor().execute("SELECT 1")
+        conn.commit() # Confirma a transação dummy
         return conn
     except psycopg2.Error as e:
-        st.error(f"Erro ao conectar ao banco de dados: {e}")
-        st.stop() # Interrompe a execução se a conexão inicial falhar
+        st.error(f"Erro ao obter uma conexão ativa com o banco de dados: {e}")
+        # Se a conexão falhou, limpa o cache para que uma nova seja tentada na próxima vez
+        get_db_connection.clear()
+        st.stop() # Para a execução da app para evitar mais erros
 
-# --- Funções de Persistência e Banco de Dados (com caching) ---
+# --- Funções de Persistência e Banco de Dados (com caching e sem fechar conexões) ---
 
 @st.cache_data(ttl=60) # Cache para usuários (1 minuto)
 def load_users() -> List[Dict]:
     """Carrega dados de usuário do banco de dados."""
-    conn = None
+    conn = get_db_connection() # Obtém a conexão cacheada
     try:
-        conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
             "SELECT id, username, password_hash, name, email, roles, active, created_at FROM users ORDER BY name")
@@ -72,14 +72,12 @@ def load_users() -> List[Dict]:
         st.error(f"Erro ao carregar usuários: {e}")
         return []
     finally:
-        # Não fechar a conexão aqui, ela é gerenciada pelo st.cache_resource
-        pass
+        pass # Não fecha a conexão, ela é gerenciada por st.cache_resource
 
 def create_user(data: Dict) -> Optional[Dict]:
     """Cria um novo registro de usuário no banco de dados e invalida o cache."""
-    conn = None
+    conn = get_db_connection()
     try:
-        conn = get_db_connection()
         cur = conn.cursor()
 
         cur.execute("SELECT id FROM users WHERE username = %s", (data.get('username', '').lower(),))
@@ -122,14 +120,12 @@ def create_user(data: Dict) -> Optional[Dict]:
             conn.rollback()
         return None
     finally:
-        # Não fechar a conexão
-        pass
+        pass # Não fecha a conexão
 
 def update_user(user_id: int, updates: Dict) -> Optional[Dict]:
     """Atualiza um registro de usuário existente no banco de dados e invalida o cache."""
-    conn = None
+    conn = get_db_connection()
     try:
-        conn = get_db_connection()
         cur = conn.cursor()
 
         set_clauses = []
@@ -177,15 +173,13 @@ def update_user(user_id: int, updates: Dict) -> Optional[Dict]:
             conn.rollback()
         return None
     finally:
-        # Não fechar a conexão
-        pass
+        pass # Não fecha a conexão
 
 @st.cache_data(ttl=5) # Cache para notificações (5 segundos)
 def load_notifications() -> List[Dict]:
     """Carrega dados de notificação do banco de dados, incluindo dados relacionados."""
-    conn = None
+    conn = get_db_connection()
     try:
-        conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("""
             SELECT
@@ -224,18 +218,16 @@ def load_notifications() -> List[Dict]:
         st.error(f"Erro ao carregar notificações: {e}")
         return []
     finally:
-        # Não fechar a conexão
-        pass
+        pass # Não fecha a conexão
 
 def create_notification(data: Dict, uploaded_files: Optional[List[Any]] = None) -> Dict:
     """
     Cria um novo registro de notificação no banco de dados e seus anexos iniciais,
     invalidando o cache de notificações.
     """
-    conn = None
+    conn = get_db_connection()
     notification_id = None
     try:
-        conn = get_db_connection()
         cur = conn.cursor()
 
         occurrence_date_iso = data.get('occurrence_date').isoformat() if isinstance(data.get('occurrence_date'), dt_date_class) else None
@@ -306,16 +298,14 @@ def create_notification(data: Dict, uploaded_files: Optional[List[Any]] = None) 
             conn.rollback()
         return {}
     finally:
-        # Não fechar a conexão
-        pass
+        pass # Não fecha a conexão
 
 def update_notification(notification_id: int, updates: Dict):
     """
     Atualiza um registro de notificação, invalidando o cache de notificações.
     """
-    conn = None
+    conn = get_db_connection()
     try:
-        conn = get_db_connection()
         cur = conn.cursor()
 
         set_clauses = []
@@ -370,8 +360,7 @@ def update_notification(notification_id: int, updates: Dict):
             conn.rollback()
         return None
     finally:
-        # Não fechar a conexão
-        pass
+        pass # Não fecha a conexão
 
 # Funções auxiliares para buscar dados relacionados (usadas por load_notifications)
 def get_notification_attachments(notification_id: int, conn=None, cur=None) -> List[Dict]:
@@ -379,7 +368,7 @@ def get_notification_attachments(notification_id: int, conn=None, cur=None) -> L
     local_conn = conn
     local_cur = cur
     try:
-        if not (local_conn and local_cur):
+        if not (local_conn and local_cur): # Se não recebeu conn/cur, tenta pegar do cache
             local_conn = get_db_connection()
             local_cur = local_conn.cursor()
 
@@ -391,8 +380,12 @@ def get_notification_attachments(notification_id: int, conn=None, cur=None) -> L
         st.error(f"Erro ao carregar anexos da notificação {notification_id}: {e}")
         return []
     finally:
+        # Se a conexão e cursor foram criados localmente, feche-os.
+        # Se foram passados como argumento, não feche, pois são gerenciados pelo chamador.
         if not (conn and cur) and local_cur: local_cur.close()
-        if not (conn and cur) and local_conn: local_conn.close()
+        # Se local_conn foi criado e não é o conn passado, feche-o
+        if not (conn and cur) and local_conn and local_conn is not conn: local_conn.close()
+
 
 def get_notification_history(notification_id: int, conn=None, cur=None) -> List[Dict]:
     """Busca entradas de histórico para uma notificação. Pode usar conexão e cursor existentes."""
@@ -421,7 +414,7 @@ def get_notification_history(notification_id: int, conn=None, cur=None) -> List[
         return []
     finally:
         if not (conn and cur) and local_cur: local_cur.close()
-        if not (conn and cur) and local_conn: local_conn.close()
+        if not (conn and cur) and local_conn and local_conn is not conn: local_conn.close()
 
 def get_notification_actions(notification_id: int, conn=None, cur=None) -> List[Dict]:
     """Busca ações de executores para uma notificação. Pode usar conexão e cursor existentes."""
@@ -453,7 +446,8 @@ def get_notification_actions(notification_id: int, conn=None, cur=None) -> List[
         return []
     finally:
         if not (conn and cur) and local_cur: local_cur.close()
-        if not (conn and cur) and local_conn: local_conn.close()
+        if not (conn and cur) and local_conn and local_conn is not conn: local_conn.close()
+
 
 def add_history_entry(notification_id: int, action: str, user: str, details: str = "", conn=None, cursor=None):
     """
@@ -481,8 +475,8 @@ def add_history_entry(notification_id: int, action: str, user: str, details: str
             local_conn.rollback()
         return False
     finally:
-        # Não fechar a conexão
-        pass
+        if not (conn and cur) and local_cur: local_cur.close()
+        if not (conn and cur) and local_conn and local_conn is not conn: local_conn.close()
 
 def add_notification_action(notification_id: int, action_data: Dict, conn=None, cur=None):
     """
@@ -516,12 +510,12 @@ def add_notification_action(notification_id: int, action_data: Dict, conn=None, 
         return True
     except psycopg2.Error as e:
         st.error(f"Erro ao adicionar ação para notificação {notification_id}: {e}")
-        if local_conn and not (conn and cursor):
+        if local_conn and not (conn and cur):
             local_conn.rollback()
         return False
     finally:
-        # Não fechar a conexão
-        pass
+        if not (conn and cur) and local_cur: local_cur.close()
+        if not (conn and cur) and local_conn and local_conn is not conn: local_conn.close()
 
 # --- Funções de Autenticação e Autorização ---
 
@@ -845,7 +839,7 @@ def show_sidebar():
         if st.session_state.authenticated and st.session_state.user:
             st.markdown(f"""
             <div class="user-info">
-                <strong>�� {st.session_state.user.get('name', 'Usuário')}</strong><br>
+                <strong>👤 {st.session_state.user.get('name', 'Usuário')}</strong><br>
                 <small>{st.session_state.user.get('username', UI_TEXTS.text_na)}</small><br>
                 <small>Funções: {', '.join(st.session_state.user.get('roles', [])) or 'Nenhuma'}</small>
             </div>
@@ -1045,41 +1039,46 @@ def init_database():
             CREATE INDEX IF NOT EXISTS idx_actions_timestamp ON notification_actions (action_timestamp);
         """)
 
-        cur.execute("SELECT COUNT(*) FROM users WHERE username = 'admin'")
-        if cur.fetchone()[0] == 0:
-            admin_password_hash = hash_password("6105/*")
-            cur.execute("""
-                INSERT INTO users (username, password_hash, name, email, roles, active)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, ('admin', admin_password_hash, 'Administrador', 'admin@hospital.com',
-                  ['admin', 'classificador', 'executor', 'aprovador'], True))
-            conn.commit()
-            st.toast("Usuário administrador padrão criado no banco de dados!")
+        # Verifica se o usuário 'admin' padrão existe, se não, cria
+        conn_check_admin = get_db_connection()
+        cur_check_admin = None
+        try:
+            cur_check_admin = conn_check_admin.cursor()
+            cur_check_admin.execute("SELECT COUNT(*) FROM users WHERE username = 'admin'")
+            if cur_check_admin.fetchone()[0] == 0:
+                admin_password_hash = hash_password("6105/*")
+                cur_check_admin.execute("""
+                    INSERT INTO users (username, password_hash, name, email, roles, active)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, ('admin', admin_password_hash, 'Administrador', 'admin@hospital.com',
+                      ['admin', 'classificador', 'executor', 'aprovador'], True))
+                conn_check_admin.commit()
+                st.toast("Usuário administrador padrão criado no banco de dados!")
+        except psycopg2.Error as e:
+            st.error(f"Erro ao verificar/criar usuário admin: {e}")
+            if conn_check_admin:
+                conn_check_admin.rollback()
+            st.stop()
+        finally:
+            if cur_check_admin:
+                cur_check_admin.close()
+            # Não fecha conn_check_admin, ele é o mesmo objeto get_db_connection()
 
-        conn.commit()
-        cur.close()
     except psycopg2.Error as e:
         st.error(f"Erro ao inicializar o banco de dados: {e}")
-        if conn:
-            # Tentar rollback se a conexão ainda estiver válida, caso contrário, ignorar
-            try:
-                conn.rollback()
-            except psycopg2.InterfaceError:
-                pass # Conexão já estava fechada, não há o que reverter
-        # Importante: Não fechar a conexão aqui e não chamar st.stop() se o erro for no rollback.
-        # A propagação da exceção já fará o Streamlit parar ou recarregar.
-        raise # Re-lançar a exceção para que o Streamlit mostre o traceback completo.
+        # Se o erro ocorre durante a criação das tabelas, um rollback pode ser necessário.
+        # No entanto, como get_db_connection é @st.cache_resource, não devemos fechar a conexão aqui.
+        # A exceção será re-lançada para o Streamlit.
+        raise
     finally:
-        # CRUCIAL: NÃO FECHAR A CONEXÃO AQUI!
-        # A conexão é gerenciada pelo decorador @st.cache_resource em get_db_connection().
-        # Fechá-la aqui faria com que a conexão cacheada ficasse inutilizável em chamadas subsequentes.
-        pass
+        pass # CRUCIAL: NÃO FECHAR A CONEXÃO AQUI! Ela é gerenciada pelo @st.cache_resource.
 
 # Main execution logic for the app
 def main_app_logic():
+    # A inicialização do DB é feita no início do script para garantir que esteja pronto.
     init_database()
 
-    # Inicializa st.session_state para autenticação e dados de usuário
+    # Inicializa st.session_state para autenticação e outros dados
     if 'authenticated' not in st.session_state: st.session_state.authenticated = False
     if 'user' not in st.session_state: st.session_state.user = None
     if 'initial_classification_state' not in st.session_state: st.session_state.initial_classification_state = {}
@@ -1092,26 +1091,26 @@ def main_app_logic():
     if 'redirect_done' not in st.session_state:
         st.session_state.redirect_done = False
 
-    # Se o usuário não está autenticado e ainda não foi redirecionado nesta sessão,
-    # redirecionar para a página de criação de notificação.
-    # O st.Page("streamlit_app.py") é a página inicial da aplicação Streamlit.
-    # Se o usuário estiver nesta página e não logado, redirecionamos.
-    if not st.session_state.authenticated and not st.session_state.redirect_done:
-        st.session_state.redirect_done = True # Marca que o redirecionamento foi feito/tentado
-        st.switch_page("pages/1_Nova_Notificacao.py")
-        # O st.switch_page irá causar um rerun e carregar a nova página.
-        # O código abaixo deste ponto não será executado na mesma passagem.
-        
-    show_sidebar() # A sidebar é mostrada independentemente do redirecionamento
+    # Redirecionamento inicial para a página de criação de notificação se não autenticado
+    # e ainda não foi redirecionado nesta sessão.
+    # st.Page.current().script_path verifica qual script Streamlit está sendo executado no momento.
+    # O arquivo raiz (streamlit_app.py) é o "Home".
+    if st.Page("pages/1_Nova_Notificacao.py").script_path != st.runtime.get_instance().get_script_path():
+        if not st.session_state.authenticated and not st.session_state.redirect_done:
+            st.session_state.redirect_done = True # Marca que o redirecionamento foi feito/tentado
+            st.switch_page("pages/1_Nova_Notificacao.py")
+            # A execução será transferida para a nova página, o código abaixo não será executado nesta passagem.
+            # O st.switch_page automaticamente faz um rerun.
+            
+    show_sidebar() # A sidebar é mostrada sempre
 
-    # Conteúdo da página inicial (streamlit_app.py)
-    # Este conteúdo só será visível se o redirecionamento não acontecer (e.g., após login,
-    # ou se o usuário voltar para a página inicial explicitamente).
+    # Este conteúdo será exibido na área principal SOMENTE se o usuário estiver na página 'Home' (streamlit_app.py)
+    # e não houver um redirecionamento automático (e.g., após o login ou se o usuário navegar de volta para cá).
     if st.session_state.authenticated:
         st.markdown("<h1 class='main-header'>Bem-vindo(a) ao NotificaSanta!</h1>", unsafe_allow_html=True)
         st.info("Utilize o menu lateral para navegar entre as funcionalidades.")
     else:
-        st.info("Por favor, faça login para acessar o sistema ou comece criando uma nova notificação.")
+        st.info("Por favor, faça login para acessar o sistema ou utilize o menu lateral para criar uma nova notificação.")
 
 
 if __name__ == "__main__":
