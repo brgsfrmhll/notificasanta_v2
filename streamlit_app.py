@@ -14,6 +14,7 @@ from psycopg2 import sql
 
 # Importa as constantes e as funções utilitárias que serão compartilhadas
 from constants import UI_TEXTS, FORM_DATA, DEADLINE_DAYS_MAPPING, DATA_DIR, ATTACHMENTS_DIR
+# Importa funções específicas do utils.py
 from utils import _reset_form_state, _clear_execution_form_state, _clear_approval_form_state, get_deadline_status, format_date_time_summary, display_notification_full_details, save_uploaded_file_to_disk, get_attachment_data
 
 # --- Configuração do Banco de Dados ---
@@ -383,7 +384,6 @@ def get_notification_attachments(notification_id: int, conn=None, cur=None) -> L
         # Se a conexão e cursor foram criados localmente, feche-os.
         # Se foram passados como argumento, não feche, pois são gerenciados pelo chamador.
         if not (conn and cur) and local_cur: local_cur.close()
-        # Se local_conn foi criado e não é o conn passado, feche-o
         if not (conn and cur) and local_conn and local_conn is not conn: local_conn.close()
 
 
@@ -562,6 +562,7 @@ def check_permission(required_role: str) -> bool:
 def get_users_by_role(role: str) -> List[Dict]:
     """Retorna usuários ativos com uma função específica."""
     users = load_users()
+    # Adicionando explicitamente a verificação de 'active' = True, embora load_users já faça isso
     return [user for user in users if role in user.get('roles', []) and user.get('active', True)]
 
 # --- Configuração do Streamlit e CSS Customizado ---
@@ -927,7 +928,7 @@ def init_database():
 
     conn = None
     try:
-        conn = get_db_connection()
+        conn = get_db_connection() # Esta função agora verifica a validade da conexão
         cur = conn.cursor()
 
         # Criar tabelas
@@ -1040,10 +1041,9 @@ def init_database():
         """)
 
         # Verifica se o usuário 'admin' padrão existe, se não, cria
-        conn_check_admin = get_db_connection()
-        cur_check_admin = None
+        # Acesso direto a conn_check_admin.cursor() já garante que a conexão está ativa devido ao get_db_connection()
+        cur_check_admin = conn.cursor()
         try:
-            cur_check_admin = conn_check_admin.cursor()
             cur_check_admin.execute("SELECT COUNT(*) FROM users WHERE username = 'admin'")
             if cur_check_admin.fetchone()[0] == 0:
                 admin_password_hash = hash_password("6105/*")
@@ -1052,17 +1052,16 @@ def init_database():
                     VALUES (%s, %s, %s, %s, %s, %s)
                 """, ('admin', admin_password_hash, 'Administrador', 'admin@hospital.com',
                       ['admin', 'classificador', 'executor', 'aprovador'], True))
-                conn_check_admin.commit()
+                conn.commit() # Commit no conn principal
                 st.toast("Usuário administrador padrão criado no banco de dados!")
         except psycopg2.Error as e:
             st.error(f"Erro ao verificar/criar usuário admin: {e}")
-            if conn_check_admin:
-                conn_check_admin.rollback()
+            if conn:
+                conn.rollback()
             st.stop()
         finally:
             if cur_check_admin:
                 cur_check_admin.close()
-            # Não fecha conn_check_admin, ele é o mesmo objeto get_db_connection()
 
     except psycopg2.Error as e:
         st.error(f"Erro ao inicializar o banco de dados: {e}")
@@ -1093,16 +1092,17 @@ def main_app_logic():
 
     # Redirecionamento inicial para a página de criação de notificação se não autenticado
     # e ainda não foi redirecionado nesta sessão.
-    # st.Page.current().script_path verifica qual script Streamlit está sendo executado no momento.
-    # O arquivo raiz (streamlit_app.py) é o "Home".
-    if st.Page("pages/1_Nova_Notificacao.py").script_path != st.runtime.get_instance().get_script_path():
-        if not st.session_state.authenticated and not st.session_state.redirect_done:
-            st.session_state.redirect_done = True # Marca que o redirecionamento foi feito/tentado
-            st.switch_page("pages/1_Nova_Notificacao.py")
-            # A execução será transferida para a nova página, o código abaixo não será executado nesta passagem.
-            # O st.switch_page automaticamente faz um rerun.
-            
-    show_sidebar() # A sidebar é mostrada sempre
+    # Obtém o nome do arquivo do script atual
+    current_script_name = os.path.basename(st.runtime.get_instance().get_script_path())
+    
+    # Se o script atual é o arquivo principal (Home) E o usuário não está autenticado
+    # E o redirecionamento inicial ainda não foi feito nesta sessão
+    if current_script_name == "streamlit_app.py" and not st.session_state.authenticated and not st.session_state.redirect_done:
+        st.session_state.redirect_done = True # Marca que o redirecionamento foi feito/tentado
+        st.switch_page("pages/1_Nova_Notificacao.py")
+        # A execução será transferida para a nova página. O código abaixo não será executado nesta passagem.
+        
+    show_sidebar() # A sidebar é mostrada sempre, independentemente do redirecionamento.
 
     # Este conteúdo será exibido na área principal SOMENTE se o usuário estiver na página 'Home' (streamlit_app.py)
     # e não houver um redirecionamento automático (e.g., após o login ou se o usuário navegar de volta para cá).
@@ -1110,6 +1110,7 @@ def main_app_logic():
         st.markdown("<h1 class='main-header'>Bem-vindo(a) ao NotificaSanta!</h1>", unsafe_allow_html=True)
         st.info("Utilize o menu lateral para navegar entre as funcionalidades.")
     else:
+        st.markdown("<h1 class='main-header'>Bem-vindo(a) ao NotificaSanta!</h1>", unsafe_allow_html=True)
         st.info("Por favor, faça login para acessar o sistema ou utilize o menu lateral para criar uma nova notificação.")
 
 
