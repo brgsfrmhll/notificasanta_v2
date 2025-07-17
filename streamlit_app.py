@@ -14,6 +14,7 @@ from psycopg2 import sql
 
 # Importa as constantes e as funções utilitárias que serão compartilhadas
 from constants import UI_TEXTS, FORM_DATA, DEADLINE_DAYS_MAPPING, DATA_DIR, ATTACHMENTS_DIR
+# Importa funções específicas do utils.py
 from utils import _reset_form_state, _clear_execution_form_state, _clear_approval_form_state, get_deadline_status, format_date_time_summary, display_notification_full_details, save_uploaded_file_to_disk, get_attachment_data
 
 # --- Configuração do Banco de Dados ---
@@ -24,7 +25,7 @@ DB_CONFIG = {
     "password": "6105/*"
 }
 
-@st.cache_resource(ttl=3600) # Cache para a conexão do banco de dados (pode ser ajustado)
+@st.cache_resource(ttl=3600) # Cache para a conexão do banco de dados (1 hora)
 def get_db_connection():
     """
     Estabelece e retorna uma conexão com o banco de dados PostgreSQL.
@@ -32,14 +33,17 @@ def get_db_connection():
     """
     try:
         conn = psycopg2.connect(**DB_CONFIG)
+        # Opcional: Adicionar um teste simples para a conexão antes de retorná-la
+        # para lidar com conexões que podem ter ficado "stale" devido a timeouts de rede, etc.
+        # Isso forçaria o cache a recriar a conexão se a existente estiver inativa.
+        # conn.cursor().execute("SELECT 1")
         return conn
     except psycopg2.Error as e:
         st.error(f"Erro ao conectar ao banco de dados: {e}")
-        st.stop() # Interrompe a execução para evitar erros posteriores
+        st.stop() # Interrompe a execução se a conexão inicial falhar
 
 # --- Funções de Persistência e Banco de Dados (com caching) ---
 
-# Caching para carregar usuários - invalidar quando usuários são criados/atualizados
 @st.cache_data(ttl=60) # Cache para usuários (1 minuto)
 def load_users() -> List[Dict]:
     """Carrega dados de usuário do banco de dados."""
@@ -68,8 +72,8 @@ def load_users() -> List[Dict]:
         st.error(f"Erro ao carregar usuários: {e}")
         return []
     finally:
-        if conn:
-            conn.close()
+        # Não fechar a conexão aqui, ela é gerenciada pelo st.cache_resource
+        pass
 
 def create_user(data: Dict) -> Optional[Dict]:
     """Cria um novo registro de usuário no banco de dados e invalida o cache."""
@@ -118,8 +122,8 @@ def create_user(data: Dict) -> Optional[Dict]:
             conn.rollback()
         return None
     finally:
-        if conn:
-            conn.close()
+        # Não fechar a conexão
+        pass
 
 def update_user(user_id: int, updates: Dict) -> Optional[Dict]:
     """Atualiza um registro de usuário existente no banco de dados e invalida o cache."""
@@ -173,10 +177,9 @@ def update_user(user_id: int, updates: Dict) -> Optional[Dict]:
             conn.rollback()
         return None
     finally:
-        if conn:
-            conn.close()
+        # Não fechar a conexão
+        pass
 
-# Caching para carregar notificações - invalidar quando notificações são criadas/atualizadas
 @st.cache_data(ttl=5) # Cache para notificações (5 segundos)
 def load_notifications() -> List[Dict]:
     """Carrega dados de notificação do banco de dados, incluindo dados relacionados."""
@@ -221,8 +224,8 @@ def load_notifications() -> List[Dict]:
         st.error(f"Erro ao carregar notificações: {e}")
         return []
     finally:
-        if conn:
-            conn.close()
+        # Não fechar a conexão
+        pass
 
 def create_notification(data: Dict, uploaded_files: Optional[List[Any]] = None) -> Dict:
     """
@@ -303,8 +306,8 @@ def create_notification(data: Dict, uploaded_files: Optional[List[Any]] = None) 
             conn.rollback()
         return {}
     finally:
-        if conn:
-            conn.close()
+        # Não fechar a conexão
+        pass
 
 def update_notification(notification_id: int, updates: Dict):
     """
@@ -367,8 +370,8 @@ def update_notification(notification_id: int, updates: Dict):
             conn.rollback()
         return None
     finally:
-        if conn:
-            conn.close()
+        # Não fechar a conexão
+        pass
 
 # Funções auxiliares para buscar dados relacionados (usadas por load_notifications)
 def get_notification_attachments(notification_id: int, conn=None, cur=None) -> List[Dict]:
@@ -478,10 +481,8 @@ def add_history_entry(notification_id: int, action: str, user: str, details: str
             local_conn.rollback()
         return False
     finally:
-        if local_cur and not (conn and cursor):
-            local_cur.close()
-        if local_conn and not (conn and cursor):
-            local_conn.close()
+        # Não fechar a conexão
+        pass
 
 def add_notification_action(notification_id: int, action_data: Dict, conn=None, cur=None):
     """
@@ -519,9 +520,8 @@ def add_notification_action(notification_id: int, action_data: Dict, conn=None, 
             local_conn.rollback()
         return False
     finally:
-        if local_cur and not (conn and cursor): local_cur.close()
-        if local_conn and not (conn and cursor): local_conn.close()
-
+        # Não fechar a conexão
+        pass
 
 # --- Funções de Autenticação e Autorização ---
 
@@ -550,11 +550,11 @@ def logout_user():
     if 'current_initial_classification_id' in st.session_state: st.session_state.pop('current_initial_classification_id')
     if 'current_review_classification_id' in st.session_state: st.session_state.pop('current_review_classification_id')
     if 'approval_form_state' in st.session_state: st.session_state.pop('approval_form_state')
+    
+    # Resetar a flag de redirecionamento para que na próxima vez o user seja redirecionado para a home
+    st.session_state.redirect_done = False 
     st.success("Deslogado com sucesso!")
-    # Com st.switch_page, não precisamos de st.rerun() aqui, pois o Streamlit
-    # volta para a página principal (Home) ou para a página definida como padrão.
-    # No nosso caso, o Streamlit vai para a página "Home" que é o streamlit_app.py
-    # Se quiser forçar para a página de criação de notificação após logout, use:
+    # Redireciona para a página de criação de notificação após o logout
     st.switch_page("pages/1_Nova_Notificacao.py")
 
 
@@ -845,7 +845,7 @@ def show_sidebar():
         if st.session_state.authenticated and st.session_state.user:
             st.markdown(f"""
             <div class="user-info">
-                <strong>👤 {st.session_state.user.get('name', 'Usuário')}</strong><br>
+                <strong>�� {st.session_state.user.get('name', 'Usuário')}</strong><br>
                 <small>{st.session_state.user.get('username', UI_TEXTS.text_na)}</small><br>
                 <small>Funções: {', '.join(st.session_state.user.get('roles', [])) or 'Nenhuma'}</small>
             </div>
@@ -853,7 +853,6 @@ def show_sidebar():
             st.markdown("### 📋 Menu Principal")
 
             # --- BOTÕES DE NAVEGAÇÃO CUSTOMIZADOS ---
-            # Para cada página em 'pages/', crie um botão aqui usando st.switch_page
             user_roles = st.session_state.user.get('roles', [])
 
             # Botão "Nova Notificação" (geralmente acessível a todos)
@@ -904,12 +903,15 @@ def show_sidebar():
                         st.success(f"Login realizado com sucesso! Bem-vindo, {user.get('name', 'Usuário')}.")
                         st.session_state.pop('sidebar_username_form', None)
                         st.session_state.pop('sidebar_password_form', None)
+                        
+                        # Limpa o flag de redirecionamento para que o redirecionamento pós-login aconteça
+                        st.session_state.redirect_done = False 
+
                         # Após o login, redireciona para a página padrão para usuários logados
                         if 'classificador' in user.get('roles', []) or 'admin' in user.get('roles', []):
                             st.switch_page("pages/3_Classificacao_e_Revisao.py")
                         else:
                             st.switch_page("pages/1_Nova_Notificacao.py") # Página padrão para outros usuários
-                        # st.rerun() # st.switch_page já causa um rerun e navega.
                     else:
                         st.error("Usuário ou senha inválidos!")
             st.markdown("---")
@@ -1059,11 +1061,19 @@ def init_database():
     except psycopg2.Error as e:
         st.error(f"Erro ao inicializar o banco de dados: {e}")
         if conn:
-            conn.rollback()
-        st.stop()
+            # Tentar rollback se a conexão ainda estiver válida, caso contrário, ignorar
+            try:
+                conn.rollback()
+            except psycopg2.InterfaceError:
+                pass # Conexão já estava fechada, não há o que reverter
+        # Importante: Não fechar a conexão aqui e não chamar st.stop() se o erro for no rollback.
+        # A propagação da exceção já fará o Streamlit parar ou recarregar.
+        raise # Re-lançar a exceção para que o Streamlit mostre o traceback completo.
     finally:
-        if conn:
-            conn.close()
+        # CRUCIAL: NÃO FECHAR A CONEXÃO AQUI!
+        # A conexão é gerenciada pelo decorador @st.cache_resource em get_db_connection().
+        # Fechá-la aqui faria com que a conexão cacheada ficasse inutilizável em chamadas subsequentes.
+        pass
 
 # Main execution logic for the app
 def main_app_logic():
@@ -1077,8 +1087,32 @@ def main_app_logic():
     if 'current_initial_classification_id' not in st.session_state: st.session_state.current_initial_classification_id = None
     if 'current_review_classification_id' not in st.session_state: st.session_state.current_review_classification_id = None
     if 'approval_form_state' not in st.session_state: st.session_state.approval_form_state = {}
+    
+    # Flag para controlar o redirecionamento inicial. Evita loop de redirecionamento.
+    if 'redirect_done' not in st.session_state:
+        st.session_state.redirect_done = False
 
-    show_sidebar()
+    # Se o usuário não está autenticado e ainda não foi redirecionado nesta sessão,
+    # redirecionar para a página de criação de notificação.
+    # O st.Page("streamlit_app.py") é a página inicial da aplicação Streamlit.
+    # Se o usuário estiver nesta página e não logado, redirecionamos.
+    if not st.session_state.authenticated and not st.session_state.redirect_done:
+        st.session_state.redirect_done = True # Marca que o redirecionamento foi feito/tentado
+        st.switch_page("pages/1_Nova_Notificacao.py")
+        # O st.switch_page irá causar um rerun e carregar a nova página.
+        # O código abaixo deste ponto não será executado na mesma passagem.
+        
+    show_sidebar() # A sidebar é mostrada independentemente do redirecionamento
+
+    # Conteúdo da página inicial (streamlit_app.py)
+    # Este conteúdo só será visível se o redirecionamento não acontecer (e.g., após login,
+    # ou se o usuário voltar para a página inicial explicitamente).
+    if st.session_state.authenticated:
+        st.markdown("<h1 class='main-header'>Bem-vindo(a) ao NotificaSanta!</h1>", unsafe_allow_html=True)
+        st.info("Utilize o menu lateral para navegar entre as funcionalidades.")
+    else:
+        st.info("Por favor, faça login para acessar o sistema ou comece criando uma nova notificação.")
+
 
 if __name__ == "__main__":
     main_app_logic()
