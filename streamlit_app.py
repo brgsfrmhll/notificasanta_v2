@@ -4,6 +4,7 @@ import streamlit as st
 import json
 import hashlib
 import os
+import sys # Importar sys para usar sys.argv
 from datetime import datetime, date as dt_date_class, time as dt_time_class, timedelta
 from typing import Dict, List, Optional, Any
 import uuid
@@ -36,21 +37,23 @@ def get_db_connection():
         # Teste de vida da conexão: executa uma consulta simples.
         # Se a conexão estiver fechada ou inativa, isso gerará uma exceção.
         conn.cursor().execute("SELECT 1")
-        conn.commit() # Confirma a transação dummy
+        conn.commit() # Confirma a transação dummy para liberar o cursor
         return conn
     except psycopg2.Error as e:
-        st.error(f"Erro ao obter uma conexão ativa com o banco de dados: {e}")
         # Se a conexão falhou, limpa o cache para que uma nova seja tentada na próxima vez
         get_db_connection.clear()
-        st.stop() # Para a execução da app para evitar mais erros
+        # Não chamamos st.stop() aqui. Deixamos a exceção ser propagada para init_database.
+        # Levantar uma exceção customizada para ser capturada e tratada de forma específica.
+        raise ConnectionRefusedError(f"Falha ao conectar ou verificar a validade do banco de dados: {e}")
 
 # --- Funções de Persistência e Banco de Dados (com caching e sem fechar conexões) ---
 
 @st.cache_data(ttl=60) # Cache para usuários (1 minuto)
 def load_users() -> List[Dict]:
     """Carrega dados de usuário do banco de dados."""
-    conn = get_db_connection() # Obtém a conexão cacheada
+    conn = None
     try:
+        conn = get_db_connection() # Obtém a conexão cacheada
         cur = conn.cursor()
         cur.execute(
             "SELECT id, username, password_hash, name, email, roles, active, created_at FROM users ORDER BY name")
@@ -77,8 +80,9 @@ def load_users() -> List[Dict]:
 
 def create_user(data: Dict) -> Optional[Dict]:
     """Cria um novo registro de usuário no banco de dados e invalida o cache."""
-    conn = get_db_connection()
+    conn = None
     try:
+        conn = get_db_connection()
         cur = conn.cursor()
 
         cur.execute("SELECT id FROM users WHERE username = %s", (data.get('username', '').lower(),))
@@ -99,8 +103,8 @@ def create_user(data: Dict) -> Optional[Dict]:
             True,
             datetime.now().isoformat()
         ))
-        new_user_raw = cur.fetchone()
         conn.commit()
+        new_user_raw = cur.fetchone()
         cur.close()
         load_users.clear() # Invalida o cache de usuários após a criação
         if new_user_raw:
@@ -125,8 +129,9 @@ def create_user(data: Dict) -> Optional[Dict]:
 
 def update_user(user_id: int, updates: Dict) -> Optional[Dict]:
     """Atualiza um registro de usuário existente no banco de dados e invalida o cache."""
-    conn = get_db_connection()
+    conn = None
     try:
+        conn = get_db_connection()
         cur = conn.cursor()
 
         set_clauses = []
@@ -152,8 +157,8 @@ def update_user(user_id: int, updates: Dict) -> Optional[Dict]:
         values.append(user_id)
 
         cur.execute(query, values)
-        updated_user_raw = cur.fetchone()
         conn.commit()
+        updated_user_raw = cur.fetchone()
         cur.close()
         load_users.clear() # Invalida o cache de usuários após a atualização
         if updated_user_raw:
@@ -301,65 +306,83 @@ def create_notification(data: Dict, uploaded_files: Optional[List[Any]] = None) 
     finally:
         pass # Não fecha a conexão
 
-def update_notification(notification_id: int, updates: Dict):
+def update_notification(data: Dict, uploaded_files: Optional[List[Any]] = None) -> Dict:
     """
-    Atualiza um registro de notificação, invalidando o cache de notificações.
+    Atualiza um registro de notificação no banco de dados e seus anexos iniciais,
+    invalidando o cache de notificações.
     """
     conn = get_db_connection()
+    notification_id = None
     try:
         cur = conn.cursor()
 
-        set_clauses = []
-        values = []
+        occurrence_date_iso = data.get('occurrence_date').isoformat() if isinstance(data.get('occurrence_date'), dt_date_class) else None
+        occurrence_time_str = data.get('occurrence_time').isoformat() if isinstance(data.get('occurrence_time'), dt_time_class) else None
 
-        column_mapping = {
-            'immediate_actions_taken': lambda x: True if x == "Sim" else False if x == "Não" else None,
-            'patient_involved': lambda x: True if x == "Sim" else False if x == "Não" else None,
-            'patient_outcome_obito': lambda x: (True if x == "Sim" else False if x == "Não" else None),
-            'occurrence_date': lambda x: x.isoformat() if isinstance(x, dt_date_class) else x,
-            'occurrence_time': lambda x: x.isoformat() if isinstance(x, dt_time_class) else x,
-            'classification': lambda x: json.dumps(x) if x is not None else None,
-            'rejection_classification': lambda x: json.dumps(x) if x is not None else None,
-            'review_execution': lambda x: json.dumps(x) if x is not None else None,
-            'approval': lambda x: json.dumps(x) if x is not None else None,
-            'rejection_approval': lambda x: json.dumps(x) if x is not None else None,
-            'rejection_execution_review': lambda x: json.dumps(x) if x is not None else None,
-            'conclusion': lambda x: json.dumps(x) if x is not None else None,
-            'executors': lambda x: x # psycopg2 lida bem com arrays Python para INTEGER[]
-        }
+        cur.execute("""
+            INSERT INTO notifications (
+                title, description, location, occurrence_date, occurrence_time,
+                reporting_department, reporting_department_complement, notified_department,
+                notified_department_complement, event_shift, immediate_actions_taken,
+                immediate_action_description, patient_involved, patient_id, patient_outcome_obito,
+                additional_notes, status, created_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """, (
+            data.get('title', '').strip(),
+            data.get('description', '').strip(),
+            data.get('location', '').strip(),
+            occurrence_date_iso,
+            occurrence_time_str,
+            data.get('reporting_department', '').strip(),
+            data.get('reporting_department_complement', '').strip(),
+            data.get('notified_department', '').strip(),
+            data.get('notified_department_complement', '').strip(),
+            data.get('event_shift', UI_TEXTS.selectbox_default_event_shift),
+            data.get('immediate_actions_taken') == "Sim",
+            data.get('immediate_action_description', '').strip() if data.get('immediate_actions_taken') == "Sim" else None,
+            data.get('patient_involved') == "Sim",
+            data.get('patient_id', '').strip() if data.get('patient_involved') == "Sim" else None,
+            (True if data.get('patient_outcome_obito') == "Sim" else False if data.get('patient_outcome_obito') == "Não" else None) if data.get('patient_involved') == "Sim" else None,
+            data.get('additional_notes', '').strip(),
+            "pendente_classificacao",
+            datetime.now().isoformat()
+        ))
+        notification_id = cur.fetchone()[0]
 
-        for key, value in updates.items():
-            if key not in ['id', 'created_at', 'attachments', 'actions', 'history']:
-                if key in column_mapping:
-                    set_clauses.append(sql.Identifier(key) + sql.SQL(' = %s'))
-                    values.append(column_mapping[key](value))
-                else:
-                    set_clauses.append(sql.Identifier(key) + sql.SQL(' = %s'))
-                    values.append(value)
+        if uploaded_files:
+            for file in uploaded_files:
+                saved_file_info = save_uploaded_file_to_disk(file, notification_id)
+                if saved_file_info:
+                    cur.execute("""
+                        INSERT INTO notification_attachments (notification_id, unique_name, original_name)
+                        VALUES (%s, %s, %s)
+                    """, (notification_id, saved_file_info['unique_name'], saved_file_info['original_name']))
 
-        if not set_clauses:
-            return None
-
-        query = sql.SQL("UPDATE notifications SET {} WHERE id = %s").format(
-            sql.SQL(', ').join(set_clauses)
+        add_history_entry(
+            notification_id,
+            "Notificação criada",
+            "Sistema (Formulário Público)",
+            f"Notificação enviada para classificação. Título: {data.get('title', 'Sem título')[:100]}..." if len(
+                data.get('title', '')) > 100 else f"Notificação enviada para classificação. Título: {data.get('title', 'Sem título')}",
+            conn=conn,
+            cursor=cur
         )
-        values.append(notification_id)
 
-        cur.execute(query, values)
         conn.commit()
         cur.close()
-        load_notifications.clear() # Invalida o cache de notificações após a atualização
+        load_notifications.clear() # Invalida o cache de notificações após a criação
 
         # Retorna a notificação completa para consistência (recarrega do cache)
         all_notifications_cached = load_notifications()
-        updated_notification = next((n for n in all_notifications_cached if n['id'] == notification_id), None)
-        return updated_notification
+        created_notification = next((n for n in all_notifications_cached if n['id'] == notification_id), None)
+        return created_notification
 
     except psycopg2.Error as e:
-        st.error(f"Erro ao atualizar notificação: {e}")
+        st.error(f"Erro ao criar notificação: {e}")
         if conn:
             conn.rollback()
-        return None
+        return {}
     finally:
         pass # Não fecha a conexão
 
@@ -471,7 +494,7 @@ def add_history_entry(notification_id: int, action: str, user: str, details: str
         return True
     except psycopg2.Error as e:
         st.error(f"Erro ao adicionar entrada de histórico para notificação {notification_id}: {e}")
-        if local_conn and not (conn and cursor):
+        if local_conn and not local_conn.closed and not (conn and cursor):
             local_conn.rollback()
         return False
     finally:
@@ -510,7 +533,7 @@ def add_notification_action(notification_id: int, action_data: Dict, conn=None, 
         return True
     except psycopg2.Error as e:
         st.error(f"Erro ao adicionar ação para notificação {notification_id}: {e}")
-        if local_conn and not (conn and cur):
+        if local_conn and not local_conn.closed and not (conn and cursor):
             local_conn.rollback()
         return False
     finally:
@@ -760,6 +783,7 @@ st.markdown(r"""
         border: 1px solid #4CAF50;
     }
 
+    /* Estilos para o fundo do cartão de notificação com base no status do prazo */
     .notification-card.card-prazo-fora {
         background-color: #ffe6e6;
         border: 1px solid #F44336;
@@ -1041,7 +1065,7 @@ def init_database():
         """)
 
         # Verifica se o usuário 'admin' padrão existe, se não, cria
-        # Acesso direto a conn_check_admin.cursor() já garante que a conexão está ativa devido ao get_db_connection()
+        # Acesso direto a conn.cursor() já garante que a conexão está ativa devido ao get_db_connection()
         cur_check_admin = conn.cursor()
         try:
             cur_check_admin.execute("SELECT COUNT(*) FROM users WHERE username = 'admin'")
@@ -1065,19 +1089,26 @@ def init_database():
 
     except psycopg2.Error as e:
         st.error(f"Erro ao inicializar o banco de dados: {e}")
-        # Se o erro ocorre durante a criação das tabelas, um rollback pode ser necessário.
-        # No entanto, como get_db_connection é @st.cache_resource, não devemos fechar a conexão aqui.
-        # A exceção será re-lançada para o Streamlit.
+        # Re-lançar a exceção para que main_app_logic a capture e chame st.stop()
         raise
     finally:
         pass # CRUCIAL: NÃO FECHAR A CONEXÃO AQUI! Ela é gerenciada pelo @st.cache_resource.
 
 # Main execution logic for the app
 def main_app_logic():
-    # A inicialização do DB é feita no início do script para garantir que esteja pronto.
-    init_database()
+    # 1. Sempre exibir a sidebar primeiro para garantir que a UI básica seja desenhada.
+    show_sidebar()
 
-    # Inicializa st.session_state para autenticação e outros dados
+    # 2. Inicializar o banco de dados e tratar erros críticos.
+    #    Se init_database falhar, exibe uma mensagem de erro na UI já desenhada e para.
+    try:
+        init_database()
+    except Exception as e: # Captura exceções de init_database e get_db_connection
+        st.error(f"Um erro crítico ocorreu durante a inicialização da aplicação: {e}")
+        st.info("Por favor, verifique a conexão com o banco de dados e tente novamente.")
+        st.stop() # Para a execução após exibir a mensagem de erro na UI.
+
+    # 3. Inicializa st.session_state para autenticação e outros dados
     if 'authenticated' not in st.session_state: st.session_state.authenticated = False
     if 'user' not in st.session_state: st.session_state.user = None
     if 'initial_classification_state' not in st.session_state: st.session_state.initial_classification_state = {}
@@ -1092,8 +1123,9 @@ def main_app_logic():
 
     # Redirecionamento inicial para a página de criação de notificação se não autenticado
     # e ainda não foi redirecionado nesta sessão.
-    # Obtém o nome do arquivo do script atual
-    current_script_name = os.path.basename(st.runtime.get_instance().get_script_path())
+    # sys.argv[0] contém o caminho do script que foi executado para iniciar o Streamlit.
+    # os.path.basename() extrai o nome do arquivo (ex: "streamlit_app.py").
+    current_script_name = os.path.basename(sys.argv[0])
     
     # Se o script atual é o arquivo principal (Home) E o usuário não está autenticado
     # E o redirecionamento inicial ainda não foi feito nesta sessão
@@ -1102,8 +1134,6 @@ def main_app_logic():
         st.switch_page("pages/1_Nova_Notificacao.py")
         # A execução será transferida para a nova página. O código abaixo não será executado nesta passagem.
         
-    show_sidebar() # A sidebar é mostrada sempre, independentemente do redirecionamento.
-
     # Este conteúdo será exibido na área principal SOMENTE se o usuário estiver na página 'Home' (streamlit_app.py)
     # e não houver um redirecionamento automático (e.g., após o login ou se o usuário navegar de volta para cá).
     if st.session_state.authenticated:
