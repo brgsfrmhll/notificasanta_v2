@@ -35,7 +35,6 @@ def get_db_connection():
         return conn
     except psycopg2.Error as e:
         st.error(f"Erro ao conectar ao banco de dados: {e}")
-        # Considerar um raise para que a aplicação não continue com uma conexão inválida
         st.stop() # Interrompe a execução para evitar erros posteriores
 
 # --- Funções de Persistência e Banco de Dados (com caching) ---
@@ -516,12 +515,12 @@ def add_notification_action(notification_id: int, action_data: Dict, conn=None, 
         return True
     except psycopg2.Error as e:
         st.error(f"Erro ao adicionar ação para notificação {notification_id}: {e}")
-        if local_conn and not (conn and cur):
+        if local_conn and not (conn and cursor):
             local_conn.rollback()
         return False
     finally:
-        if local_cur and not (conn and cur): local_cur.close()
-        if local_conn and not (conn and cur): local_conn.close()
+        if local_cur and not (conn and cursor): local_cur.close()
+        if local_conn and not (conn and cursor): local_conn.close()
 
 
 # --- Funções de Autenticação e Autorização ---
@@ -545,7 +544,6 @@ def logout_user():
     """Desloga o usuário atual."""
     st.session_state.authenticated = False
     st.session_state.user = None
-    # Resetar estados de formulário específicos após o logout
     _reset_form_state()
     if 'initial_classification_state' in st.session_state: st.session_state.pop('initial_classification_state')
     if 'review_classification_state' in st.session_state: st.session_state.pop('review_classification_state')
@@ -553,7 +551,12 @@ def logout_user():
     if 'current_review_classification_id' in st.session_state: st.session_state.pop('current_review_classification_id')
     if 'approval_form_state' in st.session_state: st.session_state.pop('approval_form_state')
     st.success("Deslogado com sucesso!")
-    # st.rerun() # Não é necessário rerun aqui, a navegação nativa do Streamlit já reinicia a página inicial.
+    # Com st.switch_page, não precisamos de st.rerun() aqui, pois o Streamlit
+    # volta para a página principal (Home) ou para a página definida como padrão.
+    # No nosso caso, o Streamlit vai para a página "Home" que é o streamlit_app.py
+    # Se quiser forçar para a página de criação de notificação após logout, use:
+    st.switch_page("pages/1_Nova_Notificacao.py")
+
 
 def check_permission(required_role: str) -> bool:
     """Verifica se o usuário logado possui a função necessária ou é um admin."""
@@ -572,12 +575,17 @@ st.set_page_config(
     page_title="NotificaSanta",
     page_icon="favicon/logo.png",
     layout="wide",
-    initial_sidebar_state="collapsed" # Definido para colapsar por padrão
+    initial_sidebar_state="collapsed"
 )
 
-# CORREÇÃO DO ERRO 1.2: Sintaxe corrigida no bloco CSS dentro de st.markdown
+# NOVO CSS: Oculta o menu de navegação nativo do Streamlit na sidebar
 st.markdown(r"""
 <style>
+    /* Esconde o menu de navegação nativo gerado pelo Streamlit */
+    div[data-testid="stSidebarNav"] {
+        display: none !important;
+    }
+
     /* Esconde botões e decorações padrão do Streamlit */
     button[data-testid="stDeployButton"],
     .stDeployButton,
@@ -592,29 +600,22 @@ st.markdown(r"""
         margin-top: -2em;
     }
 
-    /* Permite que a sidebar seja aberta (linha originalmente comentada, mantida para contexto) */
-    /* .sidebar-hint {
-        /* display: none; */
-    /* } */
-
     /* Garante que a Sidebar fique ACIMA de outros elementos fixos, se houver */
     div[data-testid="stSidebar"] {
         z-index: 9999 !important; /* Prioridade de empilhamento muito alta */
     }
-    /* Linhas duplicadas e chaves } extras/malposicionadas removidas daqui e de blocos similares */
 
     /* Adjust Streamlit's default margins for sidebar content */
-    /* This targets the internal container of the sidebar */
     [data-testid="stSidebarContent"] {
-        padding-top: 10px; /* Reduced from default to move content higher */
+        padding-top: 10px;
     }
 
     /* Logo - Reduced size and moved up */
     div[data-testid="stSidebar"] img {
-        transform: scale(0.6); /* Reduce size by 20% */
-        transform-origin: top center; /* Scale from the top center */
-        margin-top: -80px; /* Pull the image up */
-        margin-bottom: -20px; /* Reduce space below image */
+        transform: scale(0.6);
+        transform-origin: top center;
+        margin-top: -80px;
+        margin-bottom: -20px;
     }
 
     /* Estilo do cabeçalho principal da aplicação */
@@ -625,29 +626,27 @@ st.markdown(r"""
     }
 
     /* Novo Estilo para o Título Principal da Sidebar */
-    /* Usamos [data-testid="stSidebarContent"] para aumentar a especificidade e garantir a aplicação */
     [data-testid="stSidebarContent"] .sidebar-main-title {
-        text-align: center !important; /* Centraliza o texto */
-        color: #00008B !important; /* Cor azul escuro para o título principal */
-        font-size: 1.76em !important; /* 2.2em * 0.8 = 1.76em */
-        font-weight: 700 !important; /* Negrito forte para o título */
-        text-transform: uppercase !important; /* Transforma todo o texto em maiúsculas */
-        letter-spacing: 2px !important; /* Aumenta o espaçamento entre as letras para um visual "minimalista" e "estiloso" */
-        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2) !important; /* Sombra mais suave para profundidade */
-        margin-top: -30px !important; /* Move título principal para cima */
+        text-align: center !important;
+        color: #00008B !important;
+        font-size: 1.76em !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 2px !important;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2) !important;
+        margin-top: -30px !important;
     }
 
     /* Novo Estilo para o Subtítulo da Sidebar */
-    /* Usamos [data-testid="stSidebarContent"] para aumentar a especificidade e garantir a aplicação */
     [data-testid="stSidebarContent"] .sidebar-subtitle {
-        text-align: center !important; /* Centraliza o texto */
-        color: #333 !important; /* Cor mais suave para o subtítulo */
-        font-size: 0.72em !important; /* 0.9em * 0.8 = 0.72em */
-        font-weight: 400 !important; /* Peso de fonte médio */
-        text-transform: uppercase !important; /* Transforma todo o texto em maiúsculas, mantendo a consistência */
-        letter-spacing: 1.5px !important; /* Espaçamento entre letras para alinhamento visual */
-        margin-top: -30px !important; /* Pull closer to main title */
-        margin-bottom: 5px !important; /* Reduce margin below subtitle */
+        text-align: center !important;
+        color: #333 !important;
+        font-size: 0.72em !important;
+        font-weight: 400 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 1.5px !important;
+        margin-top: -30px !important;
+        margin-bottom: 5px !important;
     }
 
     /* Estilo geral para cartões de notificação */
@@ -657,28 +656,28 @@ st.markdown(r"""
         padding: 15px;
         margin: 10px 0;
         background-color: #f9f9f9;
-        color: #2E86AB; /* Cor do texto padrão para o cartão */
+        color: #2E86AB;
     }
 
     /* Cores e destaque para diferentes status de notificação */
-    .status-pendente_classificacao { color: #ff9800; font-weight: bold; } /* Laranja */
-    .status-classificada { color: #2196f3; font-weight: bold; } /* Azul */
-    .status-em_execucao { color: #9c27b0; font-weight: bold; } /* Roxo */
-    .status-aguardando_classificador { color: #ff5722; font-weight: bold; } /* Laranja avermelhado (Usado para Revisão Rejeitada) */
-    .status-revisao_classificador_execucao { color: #8BC34A; font-weight: bold; } /* Verde Lima - Novo Status */
-    .status-aguardando_aprovacao { color: #ffc107; font-weight: bold; } /* Amarelo */
-    .status-aprovada { color: #4caf50; font-weight: bold; } /* Verde */
-    .status-concluida { color: #4caf50; font-weight: bold; } /* Verde (mesmo que aprovada para simplificar) */
-    .status-rejeitada { color: #f44336; font-weight: bold; } /* Vermelho (Usado para Rejeição Inicial) */
-    .status-reprovada { color: #f44336; font-weight: bold; } /* Vermelho (Usado para Rejeição de Aprovação)*/
+    .status-pendente_classificacao { color: #ff9800; font-weight: bold; }
+    .status-classificada { color: #2196f3; font-weight: bold; }
+    .status-em_execucao { color: #9c27b0; font-weight: bold; }
+    .status-aguardando_classificador { color: #ff5722; font-weight: bold; }
+    .status-revisao_classificador_execucao { color: #8BC34A; font-weight: bold; }
+    .status-aguardando_aprovacao { color: #ffc107; font-weight: bold; }
+    .status-aprovada { color: #4caf50; font-weight: bold; }
+    .status-concluida { color: #4caf50; font-weight: bold; }
+    .status-rejeitada { color: #f44336; font-weight: bold; }
+    .status-reprovada { color: #f44336; font-weight: bold; }
     /* Estilo para o conteúdo da barra lateral */
     .sidebar .sidebar-content {
-        background-color: #f0f2f6; /* Cinza claro */
+        background-color: #f0f2f6;
     }
 
     /* Estilo para a caixa de informações do usuário na sidebar */
     .user-info {
-        background-color: #e8f4fd; /* Azul claro */
+        background-color: #e8f4fd;
         padding: 10px;
         border-radius: 5px;
         margin-bottom: 20px;
@@ -686,35 +685,35 @@ st.markdown(r"""
 
     /* Estilo para seções de formulário */
     .form-section {
-        background-color: #f8f9fa; /* Cinza bem claro */
+        background-color: #f8f9fa;
         padding: 15px;
         border-radius: 8px;
         margin: 10px 0;
-        border-left: 4px solid #2E86AB; /* Barra lateral azul */
+        border-left: 4px solid #2E86AB;
     }
 
     /* Estilo para campos condicionais em formulários (ex: detalhes de ação imediata) */
     .conditional-field {
-        background-color: #fff3cd; /* Amarelo claro */
+        background-color: #fff3cd;
         padding: 10px;
         border-radius: 5px;
-        border-left: 3px solid #ffc107; /* Barra lateral amarela */
+        border-left: 3px solid #ffc107;
         margin: 10px 0;
     }
 
     /* Estilo para campos obrigatórios */
     .required-field {
-        color: #dc3545; /* Vermelho */
+        color: #dc3545;
         font-weight: bold;
     }
 
     /* Cores específicas para botões "Sim" e "Não" selecionados */
     div.stButton > button[data-testid='stButton'][data-key*='_sim_step'][data-selected='true'] {
-        border-color: #4caf50; /* Verde */
+        border-color: #4caf50;
         color: #4caf50;
     }
     div.stButton > button[data-testid='stButton'][data-key*='_nao_step'][data-selected='true'] {
-        border-color: #f44336; /* Vermelho */
+        border-color: #f44336;
         color: #f44336;
     }
 
@@ -748,43 +747,43 @@ st.markdown(r"""
     /* Estilo para o rodapé da sidebar */
     .sidebar-footer {
         text-align: center;
-        margin-top: 20px; /* Adiciona um espaço acima do rodapé */
+        margin-top: 20px;
         padding: 10px;
         color: #888;
         font-size: 0.75em;
-        border-top: 1px solid #eee; /* Linha divisória sutil */
+        border-top: 1px solid #eee;
     }
 
     /* Remove padding do container principal, pois o rodapé fixo foi removido */
     div[data-testid="stAppViewContainer"] {
-        padding-bottom: 0px; /* Não é mais necessário padding na parte inferior */
+        padding-bottom: 0px;
     }
 
     /* Estilos para o fundo do cartão de notificação com base no status do prazo */
     .notification-card.card-prazo-dentro {
-        background-color: #e6ffe6; /* Verde claro para "No Prazo" e "Prazo Próximo" */
-        border: 1px solid #4CAF50; /* Borda verde */
+        background-color: #e6ffe6;
+        border: 1px solid #4CAF50;
     }
 
     .notification-card.card-prazo-fora {
-        background-color: #ffe6e6; /* Vermelho claro para "Atrasada" */
-        border: 1px solid #F44336; /* Borda vermelha */
+        background-color: #ffe6e6;
+        border: 1px solid #F44336;
     }
 
     /* Estilos para status de prazo */
-    .deadline-ontrack { color: #4CAF50; font-weight: bold; } /* Verde */
-    .deadline-duesoon { color: #FFC107; font-weight: bold; } /* Amarelo */
+    .deadline-ontrack { color: #4CAF50; font-weight: bold; }
+    .deadline-duesoon { color: #FFC107; font-weight: bold; }
 
     /* Estilo para entrada de ação individual */
     .action-entry-card {
-        border: 1px solid #cceeff; /* Azul claro */
-        border-left: 5px solid #2E86AB; /* Azul mais escuro para destaque */
+        border: 1px solid #cceeff;
+        border-left: 5px solid #2E86AB;
         border-radius: 8px;
         padding: 12px;
         margin-top: 10px;
         margin-bottom: 10px;
-        background-color: #f0f8ff; /* Fundo azul muito claro */
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* Sombra suave */
+        background-color: #f0f8ff;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
 
     .action-entry-card strong {
@@ -797,14 +796,14 @@ st.markdown(r"""
 
     /* Estilo para "minhas" ações na execução */
     .my-action-entry-card {
-        border: 1px solid #d4edda; /* Verde claro */
-        border-left: 5px solid #28a745; /* Verde para destaque */
+        border: 1px solid #d4edda;
+        border-left: 5px solid #28a745;
         border-radius: 8px;
         padding: 12px;
         margin-top: 10px;
         margin-bottom: 10px;
-        background-color: #eaf7ed; /* Fundo verde muito claro */
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* Sombra suave */
+        background-color: #eaf7ed;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
 
     .my-action-entry-card strong {
@@ -813,13 +812,13 @@ st.markdown(r"""
 
     /* Estilo para a seção de evidências dentro de uma ação */
     .evidence-section {
-        background-color: #ffffff; /* Fundo branco */
-        border-top: 1px dashed #cccccc; /* Linha tracejada superior */
+        background-color: #ffffff;
+        border-top: 1px dashed #cccccc;
         margin-top: 10px;
         padding-top: 10px;
     }
 
-    .evidence-section h6 { /* Adicionado para subtítulos dentro das evidências */
+    .evidence-section h6 {
         color: #666;
         margin-bottom: 5px;
     }
@@ -853,14 +852,44 @@ def show_sidebar():
             """, unsafe_allow_html=True)
             st.markdown("### 📋 Menu Principal")
 
-            # Os botões de navegação para as páginas não são mais necessários aqui,
-            # pois o Streamlit gera a navegação automaticamente a partir da pasta 'pages'.
-            # Apenas o botão de logout permanece.
+            # --- BOTÕES DE NAVEGAÇÃO CUSTOMIZADOS ---
+            # Para cada página em 'pages/', crie um botão aqui usando st.switch_page
+            user_roles = st.session_state.user.get('roles', [])
+
+            # Botão "Nova Notificação" (geralmente acessível a todos)
+            if st.button("📝 Nova Notificação", key="nav_create_notif", use_container_width=True):
+                st.switch_page("pages/1_Nova_Notificacao.py")
+
+            # Botão "Dashboard" (acessível para Classificador e Admin)
+            if 'classificador' in user_roles or 'admin' in user_roles:
+                if st.button("📊 Dashboard de Notificações", key="nav_dashboard", use_container_width=True):
+                    st.switch_page("pages/2_Dashboard.py")
+
+            # Botão "Classificação/Revisão" (acessível para Classificador e Admin)
+            if 'classificador' in user_roles or 'admin' in user_roles:
+                if st.button("🔍 Classificação/Revisão", key="nav_classification", use_container_width=True):
+                    st.switch_page("pages/3_Classificacao_e_Revisao.py")
+
+            # Botão "Execução" (acessível para Executor e Admin)
+            if 'executor' in user_roles or 'admin' in user_roles:
+                if st.button("⚡ Execução", key="nav_execution", use_container_width=True):
+                    st.switch_page("pages/4_Execucao.py")
+
+            # Botão "Aprovação" (acessível para Aprovador e Admin)
+            if 'aprovador' in user_roles or 'admin' in user_roles:
+                if st.button("✅ Aprovação", key="nav_approval", use_container_width=True):
+                    st.switch_page("pages/5_Aprovacao.py")
+
+            # Botão "Administração" (acessível apenas para Admin)
+            if 'admin' in user_roles:
+                if st.button("⚙️ Administração", key="nav_admin", use_container_width=True):
+                    st.switch_page("pages/6_Administracao.py")
+            # --- FIM DOS BOTÕES DE NAVEGAÇÃO CUSTOMIZADOS ---
 
             st.markdown("---")
             if st.button("🚪 Sair", key="nav_logout", use_container_width=True):
-                logout_user()
-                # st.rerun() # Não é necessário com a navegação nativa, a página será resetada para o padrão (main).
+                logout_user() # Esta função já chama st.switch_page
+
         else:
             st.markdown("### 🔐 Login do Operador")
             with st.form("sidebar_login_form"):
@@ -875,9 +904,12 @@ def show_sidebar():
                         st.success(f"Login realizado com sucesso! Bem-vindo, {user.get('name', 'Usuário')}.")
                         st.session_state.pop('sidebar_username_form', None)
                         st.session_state.pop('sidebar_password_form', None)
-                        # No modelo multi-page, um st.rerun() após o login forçará o Streamlit a recarregar
-                        # e exibir a sidebar com as páginas habilitadas.
-                        st.rerun()
+                        # Após o login, redireciona para a página padrão para usuários logados
+                        if 'classificador' in user.get('roles', []) or 'admin' in user.get('roles', []):
+                            st.switch_page("pages/3_Classificacao_e_Revisao.py")
+                        else:
+                            st.switch_page("pages/1_Nova_Notificacao.py") # Página padrão para outros usuários
+                        # st.rerun() # st.switch_page já causa um rerun e navega.
                     else:
                         st.error("Usuário ou senha inválidos!")
             st.markdown("---")
@@ -1028,7 +1060,7 @@ def init_database():
         st.error(f"Erro ao inicializar o banco de dados: {e}")
         if conn:
             conn.rollback()
-        st.stop() # Interrompe a execução se o DB não puder ser inicializado
+        st.stop()
     finally:
         if conn:
             conn.close()
