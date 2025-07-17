@@ -4,7 +4,7 @@ import streamlit as st
 import json
 import hashlib
 import os
-import sys # Importar sys para usar sys.argv
+import sys # Importar sys (ainda pode ser útil para debug, mas não mais para path de script)
 from datetime import datetime, date as dt_date_class, time as dt_time_class, timedelta
 from typing import Dict, List, Optional, Any
 import uuid
@@ -15,7 +15,6 @@ from psycopg2 import sql
 
 # Importa as constantes e as funções utilitárias que serão compartilhadas
 from constants import UI_TEXTS, FORM_DATA, DEADLINE_DAYS_MAPPING, DATA_DIR, ATTACHMENTS_DIR
-# Importa funções específicas do utils.py
 from utils import _reset_form_state, _clear_execution_form_state, _clear_approval_form_state, get_deadline_status, format_date_time_summary, display_notification_full_details, save_uploaded_file_to_disk, get_attachment_data
 
 # --- Configuração do Banco de Dados ---
@@ -36,13 +35,13 @@ def get_db_connection():
         conn = psycopg2.connect(**DB_CONFIG)
         # Teste de vida da conexão: executa uma consulta simples.
         # Se a conexão estiver fechada ou inativa, isso gerará uma exceção.
-        conn.cursor().execute("SELECT 1")
+        with conn.cursor() as cursor: # Use 'with' para garantir que o cursor seja fechado
+            cursor.execute("SELECT 1")
         conn.commit() # Confirma a transação dummy para liberar o cursor
         return conn
     except psycopg2.Error as e:
         # Se a conexão falhou, limpa o cache para que uma nova seja tentada na próxima vez
         get_db_connection.clear()
-        # Não chamamos st.stop() aqui. Deixamos a exceção ser propagada para init_database.
         # Levantar uma exceção customizada para ser capturada e tratada de forma específica.
         raise ConnectionRefusedError(f"Falha ao conectar ou verificar a validade do banco de dados: {e}")
 
@@ -345,7 +344,8 @@ def update_notification(notification_id: int, updates: Dict):
         if not set_clauses:
             return None
 
-        query = sql.SQL("UPDATE notifications SET {} WHERE id = %s").format(
+        query = sql.SQL(
+            "UPDATE notifications SET {} WHERE id = %s").format(
             sql.SQL(', ').join(set_clauses)
         )
         values.append(notification_id)
@@ -515,7 +515,7 @@ def add_notification_action(notification_id: int, action_data: Dict, conn=None, 
         return True
     except psycopg2.Error as e:
         st.error(f"Erro ao adicionar ação para notificação {notification_id}: {e}")
-        if local_conn and not local_conn.closed and not (conn and cur):
+        if local_conn and not local_conn.closed and not (conn and cursor):
             local_conn.rollback()
         return False
     finally:
@@ -892,11 +892,11 @@ def show_sidebar():
                 logout_user() # Esta função já chama st.switch_page
 
         else:
-            st.markdown("### �� Login do Operador")
+            st.markdown("### 🔐 Login do Operador")
             with st.form("sidebar_login_form"):
                 username = st.text_input("Usuário", key="sidebar_username_form")
                 password = st.text_input("Senha", type="password", key="sidebar_password_form")
-                if st.form_submit_button("�� Entrar", use_container_width=True):
+                if st.form_submit_button("🔑 Entrar", use_container_width=True):
                     user = authenticate_user(st.session_state.sidebar_username_form,
                                              st.session_state.sidebar_password_form)
                     if user:
@@ -1104,19 +1104,19 @@ def main_app_logic():
 
     # 4. Redirecionamento inicial para a página de criação de notificação se não autenticado
     #    e ainda não foi redirecionado nesta sessão.
-    # sys.argv[0] contém o caminho do script que foi executado para iniciar o Streamlit.
-    # os.path.basename() extrai o nome do arquivo (ex: "streamlit_app.py").
-    current_script_name = os.path.basename(sys.argv[0])
+    # A maneira mais confiável de verificar se estamos na página raiz (streamlit_app.py)
+    # em multi-page apps é verificar se st.query_params está vazio.
+    # Quando o Streamlit carrega a página raiz, a URL não tem ?page=nome_da_pagina.
+    is_home_page_root_url = not st.query_params
     
-    # Se o script atual é o arquivo principal (Home) E o usuário não está autenticado
-    # E o redirecionamento inicial ainda não foi feito nesta sessão
-    if current_script_name == "streamlit_app.py" and not st.session_state.authenticated and not st.session_state.redirect_done:
+    # Se estamos na URL raiz E o usuário não está autenticado E o redirecionamento inicial ainda não foi feito
+    if is_home_page_root_url and not st.session_state.authenticated and not st.session_state.redirect_done:
         st.session_state.redirect_done = True # Marca que o redirecionamento foi feito/tentado
         st.switch_page("pages/1_Nova_Notificacao.py")
         # A execução será transferida para a nova página. O código abaixo não será executado nesta passagem.
         
     # Este conteúdo será exibido na área principal SOMENTE se o usuário estiver na página 'Home' (streamlit_app.py)
-    # e não houver um redirecionamento automático (e.g., após o login ou se o usuário navegar de volta para cá).
+    # e não houver um redirecionamento automático (e.g., após o login ou se o usuário navegar de volta para acá).
     if st.session_state.authenticated:
         st.markdown("<h1 class='main-header'>Bem-vindo(a) ao NotificaSanta!</h1>", unsafe_allow_html=True)
         st.info("Utilize o menu lateral para navegar entre as funcionalidades.")
