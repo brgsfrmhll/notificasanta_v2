@@ -359,7 +359,7 @@ class FORM_DATA:
                          "Evento com dano"]
     niveis_dano = ["Dano leve", "Dano moderado", "Dano grave", "Óbito"]
     prioridades = ["Baixa", "Média", "Alta", "Crítica"]
-SETORES = [
+    SETORES = [ # CORREÇÃO: Garante que SETORES esteja indentado corretamente dentro da classe
         "Superintendência", "Agência Transfusional (AGT)", "Ala A", "Ala B",
         "Ala C", "Ala E", "Almoxarifado", "Assistência Social",
         "Ambulatório Bariátrica/Reparadora", "CCIH", "CDI", "Centro Cirúrgico",
@@ -384,7 +384,7 @@ SETORES = [
         "Morte de paciente ou lesão grave associada ao uso de dispositivo médico",
         "Morte de paciente ou lesão grave associada à incompatibilidade de tipo sanguíneo",
         "Morte de paciente ou lesão grave associada a erro de medicação",
-        "Morte de paciente ou lesão grave associada a erro de medicação",
+        "Morte de paciente ou lesão grave associada a erro de medicação", # Linha duplicada no original, mantida para consistência se não for erro lógico
         "Morte de paciente ou lesão grave associada à trombose venosa profunda (TVP) ou embolia pulmonar (EP) após artroplastia total de quadril ou joelho",
         "Morte de paciente ou lesão grave associada a hipoglicemia",
         "Morte de paciente ou lesão grave associada à infecção hospitalar",
@@ -395,9 +395,6 @@ SETORES = [
         "Morte de paciente ou lesão grave associada à violência física ou sexual no ambiente hospitalar",
         "Morte de paciente ou lesão grave associada ao desaparecimento de paciente"
     ]
-    tipos_evento_principal = {
-        "Clínico": [
-]
     tipos_evento_principal = {
         "Clínico": [
             "Infecção Relacionada à Assistência à Saúde (IRAS)",
@@ -415,7 +412,7 @@ SETORES = [
             "Não Conformidade com Protocolos Gerenciados",
             "Quebra de SLA (Atraso ou Falha na Assistência)",
             "Evento Relacionado ao Parto e Nascimento",
-"Evento Relacionado ao Parto e Nascimento",
+            "Evento Relacionado ao Parto e Nascimento", # Linha duplicada no original
             "Crise Convulsiva em Ambiente Assistencial",
             "[Hemodiálise] Coagulação do Sistema Extracorpóreo",
             "[Hemodiálise] Desconexão Acidental da Agulha de Punção da Fístula Arteriovenosa",
@@ -427,7 +424,7 @@ SETORES = [
             "[Hemodiálise] Falha no Fluxo Sanguíneo do Cateter de Hemodiálise",
             "[Hemodiálise] Falha no Fluxo Sanguíneo da Fístula Arteriovenosa",
             "[Hemodiálise] Hematoma Durante a Passagem do Cateter de Hemodiálise",
-            "[Hemodiálise] Hematoma Durante a Passagem do Cateter de Hemodiálise",
+            "[Hemodiálise] Hematoma Durante a Passagem do Cateter de Hemodiálise", # Linha duplicada no original
             "[Hemodiálise] Hemólise Relacionada à Hemodiálise",
             "[Hemodiálise] Infiltração, Edema ou Hematoma na Fístula Arteriovenosa",
             "[Hemodiálise] Pneumotórax Durante a Passagem do Cateter de Hemodiálise",
@@ -443,9 +440,9 @@ SETORES = [
             "Problema de Abastecimento/Logística",
             "Incidente de TI/Dados",
             "Erro Administrativo",
-            "Outros Eventos Não-clínicos"
-            "Erro Administrativo",
-            "Outros Eventos Não-clínicos"
+            "Outros Eventos Não-clínicos",
+            "Erro Administrativo", # Linha duplicada no original
+            "Outros Eventos Não-clínicos" # Linha duplicada no original
         ],
         "Ocupacional": [
             "Acidente com Material Biológico",
