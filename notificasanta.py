@@ -372,7 +372,7 @@ SETORES = [
         "Faturamento", "Fisioterapia", "Fonoaudiologia", "Gestão de Leitos",
         "Hemodiálise", "Higienização", "Internação/Autorização (Convênio)", "Iodoterapia",
         "Laboratório de Análises Clínicas", "Lavanderia", "Manutenção Equipamentos", "Manutenção Predial",
-"Maternidade", "Medicina do Trabalho", "NHE", "Odontologia", "Ouvidoria", "Pediatria",
+        "Maternidade", "Medicina do Trabalho", "NHE", "Odontologia", "Ouvidoria", "Pediatria",
         "Portaria/Gestão de Acessos", "Psicologia", "Qualidade", "Quimioterapia (Salão de Quimio)",
         "Recepção", "Recrutamento e Seleção", "Regulação", "SAME", "SESMT",
         "Serviço de Nutrição e Dietética", "SSB", "Urgência e Emergência/Pronto Socorro",
@@ -384,7 +384,7 @@ SETORES = [
         "Morte de paciente ou lesão grave associada ao uso de dispositivo médico",
         "Morte de paciente ou lesão grave associada à incompatibilidade de tipo sanguíneo",
         "Morte de paciente ou lesão grave associada a erro de medicação",
-"Morte de paciente ou lesão grave associada a erro de medicação",
+        "Morte de paciente ou lesão grave associada a erro de medicação",
         "Morte de paciente ou lesão grave associada à trombose venosa profunda (TVP) ou embolia pulmonar (EP) após artroplastia total de quadril ou joelho",
         "Morte de paciente ou lesão grave associada a hipoglicemia",
         "Morte de paciente ou lesão grave associada à infecção hospitalar",
@@ -427,7 +427,7 @@ SETORES = [
             "[Hemodiálise] Falha no Fluxo Sanguíneo do Cateter de Hemodiálise",
             "[Hemodiálise] Falha no Fluxo Sanguíneo da Fístula Arteriovenosa",
             "[Hemodiálise] Hematoma Durante a Passagem do Cateter de Hemodiálise",
-"[Hemodiálise] Hematoma Durante a Passagem do Cateter de Hemodiálise",
+            "[Hemodiálise] Hematoma Durante a Passagem do Cateter de Hemodiálise",
             "[Hemodiálise] Hemólise Relacionada à Hemodiálise",
             "[Hemodiálise] Infiltração, Edema ou Hematoma na Fístula Arteriovenosa",
             "[Hemodiálise] Pneumotórax Durante a Passagem do Cateter de Hemodiálise",
@@ -444,7 +444,7 @@ SETORES = [
             "Incidente de TI/Dados",
             "Erro Administrativo",
             "Outros Eventos Não-clínicos"
-"Erro Administrativo",
+            "Erro Administrativo",
             "Outros Eventos Não-clínicos"
         ],
         "Ocupacional": [
