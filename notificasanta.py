@@ -329,7 +329,7 @@ class UI_TEXTS:
     selectbox_default_tipo_principal = "Selecione"
     multiselect_instruction_placeholder = "Selecione uma ou mais opções..."
     multiselect_event_spec_label_prefix = "Especificação do Evento "
-multiselect_event_spec_label_prefix = "Especificação do Evento "
+    multiselect_event_spec_label_prefix = "Especificação do Evento "
     multiselect_event_spec_label_suffix = ":"
     multiselect_classification_oms_label = "Classificação OMS:* (selecionar ao menos um)"
     selectbox_default_requires_approval = "Selecione"
@@ -378,7 +378,7 @@ SETORES = [
         "Faturamento", "Fisioterapia", "Fonoaudiologia", "Gestão de Leitos",
         "Hemodiálise", "Higienização", "Internação/Autorização (Convênio)", "Iodoterapia",
         "Laboratório de Análises Clínicas", "Lavanderia", "Manutenção Equipamentos", "Manutenção Predial",
-"Maternidade", "Medicina do Trabalho", "NHE", "Odontologia", "Ouvidoria", "Pediatria",
+        "Maternidade", "Medicina do Trabalho", "NHE", "Odontologia", "Ouvidoria", "Pediatria",
         "Portaria/Gestão de Acessos", "Psicologia", "Qualidade", "Quimioterapia (Salão de Quimio)",
         "Recepção", "Recrutamento e Seleção", "Regulação", "SAME", "SESMT",
         "Serviço de Nutrição e Dietética", "SSB", "Urgência e Emergência/Pronto Socorro",
@@ -390,7 +390,7 @@ SETORES = [
         "Morte de paciente ou lesão grave associada ao uso de dispositivo médico",
         "Morte de paciente ou lesão grave associada à incompatibilidade de tipo sanguíneo",
         "Morte de paciente ou lesão grave associada a erro de medicação",
-"Morte de paciente ou lesão grave associada a erro de medicação",
+        "Morte de paciente ou lesão grave associada a erro de medicação",
         "Morte de paciente ou lesão grave associada à trombose venosa profunda (TVP) ou embolia pulmonar (EP) após artroplastia total de quadril ou joelho",
         "Morte de paciente ou lesão grave associada a hipoglicemia",
         "Morte de paciente ou lesão grave associada à infecção hospitalar",
@@ -450,7 +450,7 @@ SETORES = [
             "Incidente de TI/Dados",
             "Erro Administrativo",
             "Outros Eventos Não-clínicos"
-"Erro Administrativo",
+            "Erro Administrativo",
             "Outros Eventos Não-clínicos"
         ],
         "Ocupacional": [
