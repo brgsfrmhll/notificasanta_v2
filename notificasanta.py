@@ -692,7 +692,9 @@ def update_user(user_id: int, updates: Dict) -> Optional[Dict]:
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-set_clauses = []
+
+        # Esta linha e as subsequentes precisam estar indentadas
+        set_clauses = []
         values = []
         for key, value in updates.items():
             if key == 'password' and value:  # Se for para atualizar a senha
@@ -707,8 +709,6 @@ set_clauses = []
 
         if not set_clauses:
             return None  # Nenhuma atualização para aplicar
-if not set_clauses:
-            return None  # Nenhuma atualização para aplicar
 
         query = sql.SQL(
             "UPDATE users SET {} WHERE id = %s RETURNING id, username, password_hash, name, email, roles, active, created_at").format(
@@ -720,7 +720,7 @@ if not set_clauses:
         updated_user_raw = cur.fetchone()
         conn.commit()
         cur.close()
-if updated_user_raw:
+        if updated_user_raw:
             return {
                 "id": updated_user_raw[0],
                 "username": updated_user_raw[1],
@@ -740,6 +740,7 @@ if updated_user_raw:
     finally:
         if conn:
             conn.close()
+
 def load_notifications() -> List[Dict]:
     """Carrega dados de notificação do banco de dados, incluindo dados relacionados."""
     conn = None
