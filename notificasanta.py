@@ -802,7 +802,9 @@ def create_notification(data: Dict, uploaded_files: Optional[List[Any]] = None) 
                                                                                     dt_date_class) else None
         occurrence_time_str = data.get('occurrence_time').isoformat() if isinstance(data.get('occurrence_time'),
                                                                                     dt_time_class) else None
-cur.execute("""
+
+        # As linhas abaixo precisam estar indentadas DENTRO do bloco try
+        cur.execute("""
             INSERT INTO notifications (
                 title, description, location, occurrence_date, occurrence_time,
                 reporting_department, reporting_department_complement, notified_department,
@@ -820,7 +822,6 @@ cur.execute("""
             data.get('reporting_department', '').strip(),
             data.get('reporting_department_complement', '').strip(),
             data.get('notified_department', '').strip(),
-data.get('notified_department', '').strip(),
             data.get('notified_department_complement', '').strip(),
             data.get('event_shift', UI_TEXTS.selectbox_default_event_shift),
             data.get('immediate_actions_taken') == "Sim",  # Converte para booleano
@@ -835,7 +836,8 @@ data.get('notified_department', '').strip(),
             datetime.now().isoformat()
         ))
         notification_id = cur.fetchone()[0]
-# Save initial attachments
+
+        # Save initial attachments
         if uploaded_files:
             for file in uploaded_files:
                 # save_uploaded_file_to_disk salva o arquivo no sistema de arquivos
@@ -846,7 +848,8 @@ data.get('notified_department', '').strip(),
                         INSERT INTO notification_attachments (notification_id, unique_name, original_name)
                         VALUES (%s, %s, %s)
                     """, (notification_id, saved_file_info['unique_name'], saved_file_info['original_name']))
-# Add initial history entry
+
+        # Add initial history entry
         add_history_entry(
             notification_id,
             "Notificação criada",
@@ -860,8 +863,7 @@ data.get('notified_department', '').strip(),
 
         conn.commit()
         cur.close()
-conn.commit()
-        cur.close()
+        # Removido: conn.commit() e cur.close() duplicados aqui
 
         # Recarregar a notificação completa para retornar
         # Isso é importante porque a notificação pode ter valores padrão ou triggers que a modificam
@@ -878,6 +880,7 @@ conn.commit()
     finally:
         if conn:
             conn.close()
+
 def update_notification(notification_id: int, updates: Dict):
     """
     Atualiza um registro de notificação com novos dados no banco de dados.
