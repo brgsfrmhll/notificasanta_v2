@@ -10,7 +10,7 @@ import time as time_module
 import psycopg2
 from psycopg2 import sql  # Importa sql para usar na construção de queries dinâmicas
 
-# Importa experimental_fragment e o renomeia para st_fragment para uso mais limpo
+# Importa experimental_fragment e o renomeia para REMOVIDO_FRAGMENT para uso mais limpo
 
 # --- Configuração do Banco de Dados ---
 DB_CONFIG = {
@@ -1699,7 +1699,7 @@ def display_notification_full_details(notification: Dict, user_id_logged_in: Opt
     st.markdown("---")
 
 
-@st_fragment
+@REMOVIDO_FRAGMENT
 def show_create_notification():
     """
     Renderiza a página para criar novas notificações como um formulário multi-etapa.
@@ -2113,7 +2113,7 @@ def show_create_notification():
                             st.error(f"❌ Ocorreu um erro ao finalizar a notificação: {e}")
                             st.warning("Por favor, revise as informações e tente enviar novamente.")
 
-@st_fragment
+@REMOVIDO_FRAGMENT
 def show_classification():
     """
     Renders the page for classifiers to perform initial classification of new notifications
@@ -3467,7 +3467,7 @@ def show_classification():
                             f"👁️ Visualizar Detalhes - Notificação #{notification.get('id', UI_TEXTS.text_na)}"):
                         display_notification_full_details(notification, st.session_state.user.get('id'),
                                                           st.session_state.user.get('username'))
-@st_fragment
+@REMOVIDO_FRAGMENT
 def show_execution():
     """Renderiza a página para executores visualizarem notificações atribuídas e registrarem ações."""
     if not check_permission('executor'):
@@ -3957,7 +3957,7 @@ def show_execution():
                             f"  ️ Visualizar Detalhes - Notificação #{notification.get('id', UI_TEXTS.text_na)}"):
                         display_notification_full_details(notification, user_id_logged_in, user_username_logged_in)
 
-@st_fragment
+@REMOVIDO_FRAGMENT
 def show_approval():
     """Renderiza a página para aprovadores revisarem e aprovarem/rejeitarem notificações."""
     if not check_permission('aprovador'):
@@ -4433,7 +4433,7 @@ def show_approval():
                                                           st.session_state.user.get(
                                                               'username') if st.session_state.authenticated else None)
 
-@st_fragment
+@REMOVIDO_FRAGMENT
 def show_execution():
     """Renderiza a página para executores visualizarem notificações atribuídas e registrarem ações."""
     if not check_permission('executor'):
@@ -4923,7 +4923,7 @@ def show_execution():
                             f"  ️ Visualizar Detalhes - Notificação #{notification.get('id', UI_TEXTS.text_na)}"):
                         display_notification_full_details(notification, user_id_logged_in, user_username_logged_in)
 
-@st_fragment
+@REMOVIDO_FRAGMENT
 def show_admin():
     """Renderiza a página de administração."""
     if not check_permission('admin'):
