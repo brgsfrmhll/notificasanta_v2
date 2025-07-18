@@ -325,7 +325,6 @@ class UI_TEXTS:
     selectbox_default_tipo_principal = "Selecione"
     multiselect_instruction_placeholder = "Selecione uma ou mais opções..."
     multiselect_event_spec_label_prefix = "Especificação do Evento "
-multiselect_event_spec_label_prefix = "Especificação do Evento "
     multiselect_event_spec_label_suffix = ":"
     multiselect_classification_oms_label = "Classificação OMS:* (selecionar ao menos um)"
     selectbox_default_requires_approval = "Selecione"
