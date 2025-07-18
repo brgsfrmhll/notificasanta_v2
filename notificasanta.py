@@ -464,6 +464,7 @@ ATTACHMENTS_DIR = os.path.join(DATA_DIR, "attachments")
 
 
 # --- Funções de Persistência e Banco de Dados ---
+# --- Funções de Persistência e Banco de Dados ---
 def init_database():
     """Garante que os diretórios de dados e arquivos iniciais existam e cria tabelas no DB."""
     if not os.path.exists(DATA_DIR):
@@ -471,11 +472,7 @@ def init_database():
     if not os.path.exists(ATTACHMENTS_DIR):
         os.makedirs(ATTACHMENTS_DIR)
 
-    conn = None
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-conn = None
+    conn = None # Esta é a primeira e correta inicialização de conn
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -493,7 +490,7 @@ conn = None
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
             CREATE INDEX IF NOT EXISTS idx_users_username ON users (username);
-CREATE TABLE IF NOT EXISTS notifications (
+            CREATE TABLE IF NOT EXISTS notifications (
                 id SERIAL PRIMARY KEY,
                 title VARCHAR(500) NOT NULL,
                 description TEXT NOT NULL,
@@ -513,7 +510,7 @@ CREATE TABLE IF NOT EXISTS notifications (
                 additional_notes TEXT,
                 status VARCHAR(50) NOT NULL,
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
--- Campos complexos armazenados como JSONB
+                -- Campos complexos armazenados como JSONB
                 classification JSONB,
                 rejection_classification JSONB,
                 review_execution JSONB,
@@ -525,7 +522,7 @@ CREATE TABLE IF NOT EXISTS notifications (
                 -- Referências a usuários (IDs de usuários)
                 executors INTEGER[] DEFAULT '{}', -- IDs dos usuários executores (pode ser um array de IDs)
                 approver INTEGER REFERENCES users(id), -- ID do usuário aprovador
--- Colunas para otimização de busca (Full-text search)
+                -- Colunas para otimização de busca (Full-text search)
                 search_vector TSVECTOR
             );
             CREATE INDEX IF NOT EXISTS idx_notifications_status ON notifications (status);
@@ -534,8 +531,8 @@ CREATE TABLE IF NOT EXISTS notifications (
             CREATE INDEX IF NOT EXISTS idx_notifications_classification_gin ON notifications USING GIN (classification);
             CREATE INDEX IF NOT EXISTS idx_notifications_executors_gin ON notifications USING GIN (executors);
             CREATE INDEX IF NOT EXISTS idx_notifications_search_vector ON notifications USING GIN (search_vector);
--- Trigger para atualizar search_vector automaticamente
-            CREATE OR REPLACE FUNCTION update_notification_search_vector() RETURNS TRIGGER AS $
+            -- Trigger para atualizar search_vector automaticamente
+            CREATE OR REPLACE FUNCTION update_notification_search_vector() RETURNS TRIGGER AS $$
             BEGIN
                 NEW.search_vector := to_tsvector('portuguese',
                     COALESCE(NEW.title, '') || ' ' ||
@@ -546,14 +543,14 @@ CREATE TABLE IF NOT EXISTS notifications (
                 );
                 RETURN NEW;
             END;
-            $ LANGUAGE plpgsql;
+            $$ LANGUAGE plpgsql;
 
             -- Remover o trigger antigo se existir para evitar duplicação ou erros
             DROP TRIGGER IF EXISTS trg_notifications_search_vector ON notifications;
             CREATE TRIGGER trg_notifications_search_vector
             BEFORE INSERT OR UPDATE ON notifications
             FOR EACH ROW EXECUTE FUNCTION update_notification_search_vector();
-CREATE TABLE IF NOT EXISTS notification_attachments (
+            CREATE TABLE IF NOT EXISTS notification_attachments (
                 id SERIAL PRIMARY KEY,
                 notification_id INTEGER NOT NULL REFERENCES notifications(id) ON DELETE CASCADE,
                 unique_name VARCHAR(255) NOT NULL, -- Nome único do arquivo no disco
@@ -561,7 +558,7 @@ CREATE TABLE IF NOT EXISTS notification_attachments (
                 uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
             CREATE INDEX IF NOT EXISTS idx_attachments_notification_id ON notification_attachments (notification_id);
-CREATE TABLE IF NOT EXISTS notification_history (
+            CREATE TABLE IF NOT EXISTS notification_history (
                 id SERIAL PRIMARY KEY,
                 notification_id INTEGER NOT NULL REFERENCES notifications(id) ON DELETE CASCADE,
                 action_type VARCHAR(255) NOT NULL, -- e.g., 'Notificação criada', 'Classificada', 'Execução concluída'
@@ -571,7 +568,7 @@ CREATE TABLE IF NOT EXISTS notification_history (
             );
             CREATE INDEX IF NOT EXISTS idx_history_notification_id ON notification_history (notification_id);
             CREATE INDEX IF NOT EXISTS idx_history_timestamp ON notification_history (action_timestamp);
-CREATE TABLE IF NOT EXISTS notification_actions (
+            CREATE TABLE IF NOT EXISTS notification_actions (
                 id SERIAL PRIMARY KEY,
                 notification_id INTEGER NOT NULL REFERENCES notifications(id) ON DELETE CASCADE,
                 executor_id INTEGER REFERENCES users(id),
@@ -583,10 +580,10 @@ CREATE TABLE IF NOT EXISTS notification_actions (
                 evidence_attachments JSONB -- Lista de {unique_name, original_name} para evidências (pode ser uma FK para notification_attachments ou JSONB para pequenos dados)
             );
             CREATE INDEX IF NOT EXISTS idx_actions_notification_id ON notification_actions (notification_id);
-CREATE INDEX IF NOT EXISTS idx_actions_executor_id ON notification_actions (executor_id);
+            CREATE INDEX IF NOT EXISTS idx_actions_executor_id ON notification_actions (executor_id);
             CREATE INDEX IF NOT EXISTS idx_actions_timestamp ON notification_actions (action_timestamp);
         """)
-# Adiciona usuário admin padrão se não existir
+        # Adiciona usuário admin padrão se não existir
         cur.execute("SELECT COUNT(*) FROM users WHERE username = 'admin'")
         if cur.fetchone()[0] == 0:
             admin_password_hash = hash_password("6105/*")
@@ -597,7 +594,7 @@ CREATE INDEX IF NOT EXISTS idx_actions_executor_id ON notification_actions (exec
                   ['admin', 'classificador', 'executor', 'aprovador'], True))
             conn.commit()
             st.toast("Usuário administrador padrão criado no banco de dados!")
-conn.commit()
+        conn.commit() # Este commit deve ficar aqui, dentro do try.
         cur.close()
     except psycopg2.Error as e:
         st.error(f"Erro ao inicializar o banco de dados: {e}")
