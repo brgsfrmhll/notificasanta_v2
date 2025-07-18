@@ -646,7 +646,9 @@ def create_user(data: Dict) -> Optional[Dict]:
         cur.execute("SELECT id FROM users WHERE username = %s", (data.get('username', '').lower(),))
         if cur.fetchone():
             return None  # Username já existe
-user_password_hash = hash_password(data.get('password', '').strip())
+
+        # As linhas abaixo precisam estar indentadas DENTRO do bloco try
+        user_password_hash = hash_password(data.get('password', '').strip())
         cur.execute("""
             INSERT INTO users (username, password_hash, name, email, roles, active, created_at)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
@@ -663,7 +665,7 @@ user_password_hash = hash_password(data.get('password', '').strip())
         new_user_raw = cur.fetchone()
         conn.commit()
         cur.close()
-if new_user_raw:
+        if new_user_raw:
             return {
                 "id": new_user_raw[0],
                 "username": new_user_raw[1],
@@ -683,7 +685,6 @@ if new_user_raw:
     finally:
         if conn:
             conn.close()
-
 
 def update_user(user_id: int, updates: Dict) -> Optional[Dict]:
     """Atualiza um registro de usuário existente no banco de dados."""
