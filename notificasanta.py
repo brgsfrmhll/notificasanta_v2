@@ -3954,9 +3954,13 @@ def show_execution():
 
                     with st.expander(
                             f"  ️ Visualizar Detalhes - Notificação #{notification.get('id', UI_TEXTS.text_na)}"):
-                        display_notification_full_details(notification, user_id_logged_in, user_username_logged_in)
+                        display_notification_full_details(notification,
+                                                          st.session_state.user.get(
+                                                              'id') if st.session_state.authenticated else None,
+                                                          st.session_state.user.get(
+                                                              'username') if st.session_state.authenticated else None)
 
-@REMOVIDO_FRAGMENT
+
 def show_approval():
     """Renderiza a página para aprovadores revisarem e aprovarem/rejeitarem notificações."""
     if not check_permission('aprovador'):
