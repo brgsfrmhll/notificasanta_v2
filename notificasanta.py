@@ -309,7 +309,6 @@ DEADLINE_DAYS_MAPPING = {
     }
 }
 
-
 # --- Classes de Dados Globais ---
 class UI_TEXTS:
     selectbox_default_event_shift = "Selecionar Turno"
@@ -329,7 +328,6 @@ class UI_TEXTS:
     selectbox_default_tipo_principal = "Selecione"
     multiselect_instruction_placeholder = "Selecione uma ou mais opções..."
     multiselect_event_spec_label_prefix = "Especificação do Evento "
-    multiselect_event_spec_label_prefix = "Especificação do Evento "
     multiselect_event_spec_label_suffix = ":"
     multiselect_classification_oms_label = "Classificação OMS:* (selecionar ao menos um)"
     selectbox_default_requires_approval = "Selecione"
@@ -346,7 +344,7 @@ class UI_TEXTS:
     selectbox_default_admin_debug_notif = "Selecione uma notificação..."
     selectbox_never_event_na_text = "Não Aplicável (N/A)"
     multiselect_user_roles_label = "Funções do Usuário:*"
-# Novos textos para status de prazo
+    # Novos textos para status de prazo
     deadline_status_ontrack = "No Prazo"
     deadline_status_duesoon = "Prazo Próximo"
     deadline_status_overdue = "Atrasada"
@@ -365,7 +363,7 @@ class FORM_DATA:
                          "Evento com dano"]
     niveis_dano = ["Dano leve", "Dano moderado", "Dano grave", "Óbito"]
     prioridades = ["Baixa", "Média", "Alta", "Crítica"]
-SETORES = [
+    SETORES = [
         "Superintendência", "Agência Transfusional (AGT)", "Ala A", "Ala B",
         "Ala C", "Ala E", "Almoxarifado", "Assistência Social",
         "Ambulatório Bariátrica/Reparadora", "CCIH", "CDI", "Centro Cirúrgico",
@@ -390,7 +388,6 @@ SETORES = [
         "Morte de paciente ou lesão grave associada ao uso de dispositivo médico",
         "Morte de paciente ou lesão grave associada à incompatibilidade de tipo sanguíneo",
         "Morte de paciente ou lesão grave associada a erro de medicação",
-        "Morte de paciente ou lesão grave associada a erro de medicação",
         "Morte de paciente ou lesão grave associada à trombose venosa profunda (TVP) ou embolia pulmonar (EP) após artroplastia total de quadril ou joelho",
         "Morte de paciente ou lesão grave associada a hipoglicemia",
         "Morte de paciente ou lesão grave associada à infecção hospitalar",
@@ -401,9 +398,6 @@ SETORES = [
         "Morte de paciente ou lesão grave associada à violência física ou sexual no ambiente hospitalar",
         "Morte de paciente ou lesão grave associada ao desaparecimento de paciente"
     ]
-    tipos_evento_principal = {
-        "Clínico": [
-]
     tipos_evento_principal = {
         "Clínico": [
             "Infecção Relacionada à Assistência à Saúde (IRAS)",
@@ -421,7 +415,6 @@ SETORES = [
             "Não Conformidade com Protocolos Gerenciados",
             "Quebra de SLA (Atraso ou Falha na Assistência)",
             "Evento Relacionado ao Parto e Nascimento",
-"Evento Relacionado ao Parto e Nascimento",
             "Crise Convulsiva em Ambiente Assistencial",
             "[Hemodiálise] Coagulação do Sistema Extracorpóreo",
             "[Hemodiálise] Desconexão Acidental da Agulha de Punção da Fístula Arteriovenosa",
@@ -433,7 +426,6 @@ SETORES = [
             "[Hemodiálise] Falha no Fluxo Sanguíneo do Cateter de Hemodiálise",
             "[Hemodiálise] Falha no Fluxo Sanguíneo da Fístula Arteriovenosa",
             "[Hemodiálise] Hematoma Durante a Passagem do Cateter de Hemodiálise",
-"[Hemodiálise] Hematoma Durante a Passagem do Cateter de Hemodiálise",
             "[Hemodiálise] Hemólise Relacionada à Hemodiálise",
             "[Hemodiálise] Infiltração, Edema ou Hematoma na Fístula Arteriovenosa",
             "[Hemodiálise] Pneumotórax Durante a Passagem do Cateter de Hemodiálise",
@@ -448,8 +440,6 @@ SETORES = [
             "Problema Estrutural/Instalações",
             "Problema de Abastecimento/Logística",
             "Incidente de TI/Dados",
-            "Erro Administrativo",
-            "Outros Eventos Não-clínicos"
             "Erro Administrativo",
             "Outros Eventos Não-clínicos"
         ],
