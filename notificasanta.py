@@ -1721,8 +1721,6 @@ def show_create_notification():
         _reset_form_state()
 
     current_data = st.session_state.create_form_data
-    # CORREÇÃO: Acessa o st.session_state.form_step diretamente aqui e nos ifs
-    # current_step = st.session_state.form_step # REMOVIDO: Evita travar o valor
 
     # NOVO: Lógica para a etapa de sucesso (Etapa 5)
     if st.session_state.form_step == 5:
@@ -1739,12 +1737,12 @@ def show_create_notification():
         """, unsafe_allow_html=True)
         time_module.sleep(2)
         _reset_form_state()  # Limpa o formulário para uma nova notificação
-        st.session_state.form_step = 1  # Reinicia a aplicação para a primeira etapa do formulário
-        st.rerun()  # CORREÇÃO: Força o re-render
-    # Se não estiver na etapa de sucesso, exibe as etapas normais do formulário
-    st.markdown(f"### Etapa {st.session_state.form_step}")  # CORREÇÃO: Acessa diretamente
+        st.session_state.form_step = 1 # Reinicia a aplicação para a primeira etapa do formulário
+        st.rerun() # CORREÇÃO: Força o re-render
+# Se não estiver na etapa de sucesso, exibe as etapas normais do formulário
+    st.markdown(f"### Etapa {st.session_state.form_step}") # CORREÇÃO: Acessa diretamente
 
-    if st.session_state.form_step == 1:  # CORREÇÃO: Acessa diretamente
+    if st.session_state.form_step == 1: # CORREÇÃO: Acessa diretamente
         with st.container():
             st.markdown("""
             <div class="form-section">
@@ -1769,15 +1767,15 @@ def show_create_notification():
                 current_data['occurrence_time'] = st.time_input(
                     "Hora Aproximada do Evento", value=current_data['occurrence_time'],
                     help="Hora aproximada em que o evento ocorreu.", key="create_event_time_state_refactored")
-
+            
             # NOVO: Lista de opções para Setor Notificante, incluindo o placeholder
             reporting_dept_options = [UI_TEXTS.selectbox_default_department_select] + FORM_DATA.SETORES
             current_data['reporting_department'] = st.selectbox(
                 "Setor Notificante*",
-                options=reporting_dept_options,  # <-- ALTERADO
+                options=reporting_dept_options, # <-- ALTERADO
                 index=reporting_dept_options.index(current_data['reporting_department'])
-                if current_data['reporting_department'] in reporting_dept_options
-                else 0,  # <-- O '0' agora aponta para o placeholder
+                      if current_data['reporting_department'] in reporting_dept_options
+                      else 0, # <-- O '0' agora aponta para o placeholder
                 help="Selecione o setor responsável por notificar o evento",
                 key="create_reporting_dept_state_refactored"
             )
@@ -1790,8 +1788,8 @@ def show_create_notification():
             current_data['event_shift'] = st.selectbox(
                 "Turno do Evento*", options=event_shift_options,
                 index=event_shift_options.index(current_data[
-                                                    'event_shift']) if current_data[
-                                                                           'event_shift'] in event_shift_options else 0,
+                                                                                    'event_shift']) if current_data[
+                                                                                                           'event_shift'] in event_shift_options else 0,
                 help="Turno em que o evento ocorreu", key="create_event_shift_state_refactored")
             current_data['description'] = st.text_area(
                 "Descrição Detalhada do Evento*", value=current_data['description'],
@@ -1803,7 +1801,7 @@ def show_create_notification():
             st.markdown("---")
 
 
-    elif st.session_state.form_step == 2:  # CORREÇÃO: Acessa diretamente
+    elif st.session_state.form_step == 2: # CORREÇÃO: Acessa diretamente
         with st.container():
             st.markdown("""
             <div class="form-section">
@@ -1837,7 +1835,7 @@ def show_create_notification():
                 current_data['immediate_action_description'] = ""
         st.markdown("---")
 
-    elif st.session_state.form_step == 3:  # CORREÇÃO: Acessa diretamente
+    elif st.session_state.form_step == 3: # CORREÇÃO: Acessa diretamente
         with st.container():
             st.markdown("""
             <div class="form-section">
@@ -1882,7 +1880,7 @@ def show_create_notification():
                 current_data['patient_outcome_obito'] = UI_TEXTS.selectbox_default_patient_outcome_obito
         st.markdown("---")
 
-    elif st.session_state.form_step == 4:  # CORREÇÃO: Acessa diretamente
+    elif st.session_state.form_step == 4: # CORREÇÃO: Acessa diretamente
         with st.container():
             st.markdown("""
             <div class="form-section">
@@ -1896,10 +1894,10 @@ def show_create_notification():
                 notified_dept_options = [UI_TEXTS.selectbox_default_department_select] + FORM_DATA.SETORES
                 current_data['notified_department'] = st.selectbox(
                     "Setor Notificado*",
-                    options=notified_dept_options,  # <-- ALTERADO
+                    options=notified_dept_options, # <-- ALTERADO
                     index=notified_dept_options.index(current_data['notified_department'])
-                    if current_data['notified_department'] in notified_dept_options
-                    else 0,  # <-- O '0' agora aponta para o placeholder
+                          if current_data['notified_department'] in notified_dept_options
+                          else 0, # <-- O '0' agora aponta para o placeholder
                     help="Selecione o setor que será notificado sobre o evento",
                     key="create_notified_dept_refactored"
                 )
@@ -1932,184 +1930,179 @@ def show_create_notification():
 
             st.markdown("---")
 
+    # DEFINIÇÃO DAS COLUNAS: ESTA LINHA PRECISA ESTAR AQUI!
     col_prev, col_cancel_btn, col_next_submit = st.columns(3)
 
     with col_prev:
-        if st.session_state.form_step > 1 and st.session_state.form_step < 5:  # CORREÇÃO: Acessa diretamente
-            if st.button("◀️ Voltar", key=f"step_back_btn_refactored_{st.session_state.form_step}",
-                         # CORREÇÃO: Acessa diretamente
+        if st.session_state.form_step > 1 and st.session_state.form_step < 5: # CORREÇÃO: Acessa diretamente
+            if st.button("◀️ Voltar", key=f"step_back_btn_refactored_{st.session_state.form_step}", # CORREÇÃO: Acessa diretamente
                          use_container_width=True):
                 st.session_state.form_step -= 1
-                st.rerun()  # CORREÇÃO: Força o re-render
+                st.rerun() # CORREÇÃO: Força o re-render
 
     with col_cancel_btn:
-        if st.session_state.form_step < 5:  # CORREÇÃO: Acessa diretamente
+        if st.session_state.form_step < 5: # CORREÇÃO: Acessa diretamente
             if st.button("🚫 Cancelar Notificação", key="step_cancel_btn_refactored",
                          use_container_width=True):
                 _reset_form_state()
-                st.rerun()  # CORREÇÃO: Força o re-render
-
-
-with col_next_submit:
-    if st.session_state.form_step < 4:  # CORREÇÃO: Acessa diretamente
-        if st.button(f"➡️ Próximo",
-                     key=f"step_next_btn_refactored_{st.session_state.form_step}",
-                     use_container_width=True):  # CORREÇÃO: Acessa diretamente
-            validation_errors = []
-            if st.session_state.form_step == 1:  # CORREÇÃO: Acessa diretamente
-                if not current_data['title'].strip(): validation_errors.append(
-                    'Etapa 1: Título da Notificação é obrigatório.')
-                if not current_data['description'].strip(): validation_errors.append(
-                    'Etapa 1: Descrição Detalhada é obrigatória.')
-                if not current_data['location'].strip(): validation_errors.append(
-                    'Etapa 1: Local do Evento é obrigatório.')
-                if current_data['occurrence_date'] is None or not isinstance(current_data['occurrence_date'],
-                                                                             dt_date_class): validation_errors.append(
-                    'Etapa 1: Data da Ocorrência é obrigatória.')
-                if current_data['reporting_department'] == UI_TEXTS.selectbox_default_department_select:  # <-- ALTERADO
-                    validation_errors.append('Etapa 1: Setor Notificante é obrigatório.')
-                if current_data['event_shift'] == UI_TEXTS.selectbox_default_event_shift: validation_errors.append(
-                    'Etapa 1: Turno do Evento é obrigatório.')
-            elif st.session_state.form_step == 2:  # CORREÇÃO: Acessa diretamente
-                if current_data[
-                    'immediate_actions_taken'] == UI_TEXTS.selectbox_default_immediate_actions_taken: validation_errors.append(
-                    'Etapa 2: É obrigatório indicar se foram tomadas Ações Imediatas (Sim/Não).')
-                if current_data['immediate_actions_taken'] == "Sim" and not current_data[
-                    'immediate_action_description'].strip(): validation_errors.append(
-                    "Etapa 2: Descrição das ações imediatas é obrigatória quando há ações imediatas.")
-            elif st.session_state.form_step == 3:  # CORREÇÃO: Acessa diretamente
-                if current_data[
-                    'patient_involved'] == UI_TEXTS.selectbox_default_patient_involved: validation_errors.append(
-                    'Etapa 3: É obrigatório indicar se o Paciente foi Afetado (Sim/Não).')
-                if current_data['patient_involved'] == "Sim":
-                    if not current_data['patient_id'].strip(): validation_errors.append(
-                        "Etapa 3: Número do Atendimento/Prontuário é obrigatório quando paciente é afetado.")
-                    if current_data[
-                        'patient_outcome_obito'] == UI_TEXTS.selectbox_default_patient_outcome_obito: validation_errors.append(
-                        "Etapa 3: Evolução para óbito é obrigatório quando paciente é afetado.")
-            if validation_errors:
-                st.error("⚠️ **Por favor, corrija os seguintes erros:**")
-                for error in validation_errors:
-                    st.warning(error)
-            else:
-                st.session_state.form_step += 1
-                st.rerun()  # CORREÇÃO: Força o re-render
-
-    elif st.session_state.form_step == 4:  # CORREÇÃO: Acessa diretamente
-        with st.form("submit_form_refactored_step4", clear_on_submit=False):
-            submit_button = st.form_submit_button("📤 Enviar Notificação", use_container_width=True)
-
-            if submit_button:
-                st.subheader("Validando e Enviando Notificação...")
+                st.rerun() # CORREÇÃO: Força o re-render
+    with col_next_submit:
+        if st.session_state.form_step < 4: # CORREÇÃO: Acessa diretamente
+            if st.button(f"➡️ Próximo",
+                         key=f"step_next_btn_refactored_{st.session_state.form_step}", use_container_width=True): # CORREÇÃO: Acessa diretamente
                 validation_errors = []
-                # Re-valida TODOS os campos obrigatórios de TODAS as etapas (1-4) antes do envio final
-                if not current_data['title'].strip(): validation_errors.append(
-                    'Etapa 1: Título da Notificação é obrigatório.')
-                if not current_data['description'].strip(): validation_errors.append(
-                    'Etapa 1: Descrição Detalhada é obrigatória.')
-                if not current_data['location'].strip(): validation_errors.append(
-                    'Etapa 1: Local do Evento é obrigatório.')
-                if current_data['occurrence_date'] is None or not isinstance(current_data['occurrence_date'],
-                                                                             dt_date_class): validation_errors.append(
-                    'Etapa 1: Data da Ocorrência é obrigatória.')
-                if not current_data['reporting_department'] or \
-                        current_data[
-                            'reporting_department'] == UI_TEXTS.selectbox_default_department_select:  # <-- ALTERADO
-                    validation_errors.append("Etapa 1: Setor Notificante é obrigatório.")
-                if current_data['event_shift'] == UI_TEXTS.selectbox_default_event_shift: validation_errors.append(
-                    'Etapa 1: Turno do Evento é obrigatório.')
-                if current_data[
-                    'immediate_actions_taken'] == UI_TEXTS.selectbox_default_immediate_actions_taken: validation_errors.append(
-                    'Etapa 2: É obrigatório indicar se foram tomadas Ações Imediatas (Sim/Não).')
-                if current_data['immediate_actions_taken'] == "Sim" and not current_data[
-                    'immediate_action_description'].strip(): validation_errors.append(
-                    "Etapa 2: Descrição das ações imediatas é obrigatória quando há ações imediatas.")
-                if current_data[
-                    'patient_involved'] == UI_TEXTS.selectbox_default_patient_involved: validation_errors.append(
-                    'Etapa 3: É obrigatório indicar se o Paciente foi Afetado (Sim/Não).')
-                if current_data['patient_involved'] == "Sim":
-                    if not current_data['patient_id'].strip(): validation_errors.append(
-                        "Etapa 3: Número do Atendimento/Prontuário é obrigatório quando paciente é afetado.")
+                if st.session_state.form_step == 1: # CORREÇÃO: Acessa diretamente
+                    if not current_data['title'].strip(): validation_errors.append(
+                        'Etapa 1: Título da Notificação é obrigatório.')
+                    if not current_data['description'].strip(): validation_errors.append(
+                        'Etapa 1: Descrição Detalhada é obrigatória.')
+                    if not current_data['location'].strip(): validation_errors.append(
+                        'Etapa 1: Local do Evento é obrigatório.')
+                    if current_data['occurrence_date'] is None or not isinstance(current_data['occurrence_date'],
+                                                                                 dt_date_class): validation_errors.append(
+                        'Etapa 1: Data da Ocorrência é obrigatória.')
+                    if current_data['reporting_department'] == UI_TEXTS.selectbox_default_department_select: # <-- ALTERADO
+                        validation_errors.append('Etapa 1: Setor Notificante é obrigatório.')
+                    if current_data['event_shift'] == UI_TEXTS.selectbox_default_event_shift: validation_errors.append(
+                        'Etapa 1: Turno do Evento é obrigatório.')
+                elif st.session_state.form_step == 2: # CORREÇÃO: Acessa diretamente
                     if current_data[
-                        'patient_outcome_obito'] == UI_TEXTS.selectbox_default_patient_outcome_obito: validation_errors.append(
-                        "Etapa 3: Evolução para óbito é obrigatório quando paciente é afetado.")
-                if not current_data['notified_department'] or \
-                        current_data[
-                            'notified_department'] == UI_TEXTS.selectbox_default_department_select:  # <-- ALTERADO
-                    validation_errors.append("Etapa 4: Setor Notificado é obrigatório.")
+                        'immediate_actions_taken'] == UI_TEXTS.selectbox_default_immediate_actions_taken: validation_errors.append(
+                        'Etapa 2: É obrigatório indicar se foram tomadas Ações Imediatas (Sim/Não).')
+                    if current_data['immediate_actions_taken'] == "Sim" and not current_data[
+                        'immediate_action_description'].strip(): validation_errors.append(
+                        "Etapa 2: Descrição das ações imediatas é obrigatória quando há ações imediatas.")
+                elif st.session_state.form_step == 3: # CORREÇÃO: Acessa diretamente
+                    if current_data[
+                        'patient_involved'] == UI_TEXTS.selectbox_default_patient_involved: validation_errors.append(
+                        'Etapa 3: É obrigatório indicar se o Paciente foi Afetado (Sim/Não).')
+                    if current_data['patient_involved'] == "Sim":
+                        if not current_data['patient_id'].strip(): validation_errors.append(
+                            "Etapa 3: Número do Atendimento/Prontuário é obrigatório quando paciente é afetado.")
+                        if current_data[
+                            'patient_outcome_obito'] == UI_TEXTS.selectbox_default_patient_outcome_obito: validation_errors.append(
+                            "Etapa 3: Evolução para óbito é obrigatório quando paciente é afetado.")
                 if validation_errors:
-                    st.error("⚠️ **Por favor, corrija os seguintes erros antes de enviar:**")
+                    st.error("⚠️ **Por favor, corrija os seguintes erros:**")
                     for error in validation_errors:
                         st.warning(error)
                 else:
-                    notification_data_to_save = current_data.copy()
-                    uploaded_files_list = notification_data_to_save.pop('attachments', [])
-                    try:
-                        # Chama a função de criação que agora interage com o DB
-                        notification = create_notification(notification_data_to_save, uploaded_files_list)
-                        st.success(f"✅ **Notificação #{notification['id']} criada com sucesso!**")
-                        st.info(
-                            "📋 Sua notificação foi enviada para classificação e será processada pela equipe responsável.")
-                        with st.expander("📄 Resumo da Notificação Enviada", expanded=False):
-                            occurrence_datetime_summary = format_date_time_summary(
-                                notification_data_to_save.get('occurrence_date'),
-                                notification_data_to_save.get('occurrence_time')
-                            )
-                            st.write(f"**ID:** #{notification['id']}")
-                            st.write(f"**Título:** {notification_data_to_save.get('title', UI_TEXTS.text_na)}")
-                            st.write(f"**Local:** {notification_data_to_save.get('location', UI_TEXTS.text_na)}")
-                            st.write(f"**Data/Hora do Evento:** {occurrence_datetime_summary}")
-                            st.write(
-                                f"**Turno:** {notification_data_to_save.get('event_shift', UI_TEXTS.text_na)}")
-                            reporting_department = notification_data_to_save.get('reporting_department',
-                                                                                 UI_TEXTS.text_na)
-                            reporting_complement = notification_data_to_save.get('reporting_department_complement')
-                            reporting_dept_display = f"{reporting_department}{f' ({reporting_complement})' if reporting_complement else ''}"
-                            st.write(f"**Setor Notificante:** {reporting_dept_display}")
-                            notified_department = notification_data_to_save.get('notified_department',
-                                                                                UI_TEXTS.text_na)
-                            notified_complement = notification_data_to_save.get('notified_department_complement')
-                            notified_dept_display = f"{notified_department}{f' ({notified_complement})' if notified_complement else ''}"
-                            st.write(f"**Setor Notificado:** {notified_dept_display}")
-                            st.write(
-                                f"**Descrição:** {notification_data_to_save.get('description', UI_TEXTS.text_na)[:200]}..." if len(
-                                    notification_data_to_save.get('description',
-                                                                  '')) > 200 else notification_data_to_save.get(
-                                    'description', UI_TEXTS.text_na))
-                            st.write(
-                                f"**Ações Imediatas Tomadas:** {notification_data_to_save.get('immediate_actions_taken', UI_TEXTS.text_na)}")
-                            if notification_data_to_save.get('immediate_actions_taken') == 'Sim':
-                                st.write(
-                                    f"**Descrição Ações Imediatas:** {notification_data_to_save.get('immediate_action_description', UI_TEXTS.text_na)[:200]}..." if len(
-                                        notification_data_to_save.get('immediate_action_description',
-                                                                      '')) > 200 else notification_data_to_save.get(
-                                        'immediate_action_description', UI_TEXTS.text_na))
-                            st.write(
-                                f"**Paciente Envolvido:** {notification_data_to_save.get('patient_involved', UI_TEXTS.text_na)}")
-                            if notification_data_to_save.get('patient_involved') == 'Sim':
-                                st.write(
-                                    f"**N° Atendimento:** {notification_data_to_save.get('patient_id', UI_TEXTS.text_na)}")
-                                outcome_text = 'Sim' if notification_data_to_save.get(
-                                    'patient_outcome_obito') is True else 'Não' if notification_data_to_save.get(
-                                    'patient_outcome_obito') is False else 'Não informado'
-                                st.write(f"**Evoluiu para óbito:** {outcome_text}")
-                            if notification_data_to_save.get('additional_notes'):
-                                st.write(
-                                    f"**Observações Adicionais:** {notification_data_to_save.get('additional_notes', UI_TEXTS.text_na)[:200]}..." if len(
-                                        notification_data_to_save.get('additional_notes',
-                                                                      '')) > 200 else notification_data_to_save.get(
-                                        'additional_notes', UI_TEXTS.text_na))
-                            if uploaded_files_list:
-                                st.write(
-                                    f"**Anexos:** {len(uploaded_files_list)} arquivo(s) - {', '.join([f.name for f in uploaded_files_list])}")
-                            else:
-                                st.write("**Anexos:** Nenhum arquivo anexado.")
-                        st.session_state.form_step = 5  # Muda para a etapa 5
-                        st.rerun()  # CORREÇÃO: Força o re-render
+                    st.session_state.form_step += 1
+                    st.rerun() # CORREÇÃO: Força o re-render
 
-                    except Exception as e:
-                        st.error(f"❌ Ocorreu um erro ao finalizar a notificação: {e}")
-                        st.warning("Por favor, revise as informações e tente enviar novamente.")
+        elif st.session_state.form_step == 4: # CORREÇÃO: Acessa diretamente
+            with st.form("submit_form_refactored_step4", clear_on_submit=False):
+                submit_button = st.form_submit_button("📤 Enviar Notificação", use_container_width=True)
+
+                if submit_button:
+                    st.subheader("Validando e Enviando Notificação...")
+                    validation_errors = []
+                    # Re-valida TODOS os campos obrigatórios de TODAS as etapas (1-4) antes do envio final
+                    if not current_data['title'].strip(): validation_errors.append(
+                        'Etapa 1: Título da Notificação é obrigatório.')
+                    if not current_data['description'].strip(): validation_errors.append(
+                        'Etapa 1: Descrição Detalhada é obrigatória.')
+                    if not current_data['location'].strip(): validation_errors.append(
+                        'Etapa 1: Local do Evento é obrigatório.')
+                    if current_data['occurrence_date'] is None or not isinstance(current_data['occurrence_date'],
+                                                                                 dt_date_class): validation_errors.append(
+                        'Etapa 1: Data da Ocorrência é obrigatória.')
+                    if not current_data['reporting_department'] or \
+                       current_data['reporting_department'] == UI_TEXTS.selectbox_default_department_select: # <-- ALTERADO
+                        validation_errors.append("Etapa 1: Setor Notificante é obrigatório.")
+                    if current_data['event_shift'] == UI_TEXTS.selectbox_default_event_shift: validation_errors.append(
+                        'Etapa 1: Turno do Evento é obrigatório.')
+                    if current_data[
+                        'immediate_actions_taken'] == UI_TEXTS.selectbox_default_immediate_actions_taken: validation_errors.append(
+                        'Etapa 2: É obrigatório indicar se foram tomadas Ações Imediatas (Sim/Não).')
+                    if current_data['immediate_actions_taken'] == "Sim" and not current_data[
+                        'immediate_action_description'].strip(): validation_errors.append(
+                        "Etapa 2: Descrição das ações imediatas é obrigatória quando há ações imediatas.")
+                    if current_data[
+                        'patient_involved'] == UI_TEXTS.selectbox_default_patient_involved: validation_errors.append(
+                        'Etapa 3: É obrigatório indicar se o Paciente foi Afetado (Sim/Não).')
+                    if current_data['patient_involved'] == "Sim":
+                        if not current_data['patient_id'].strip(): validation_errors.append(
+                            "Etapa 3: Número do Atendimento/Prontuário é obrigatório quando paciente é afetado.")
+                        if current_data[
+                            'patient_outcome_obito'] == UI_TEXTS.selectbox_default_patient_outcome_obito: validation_errors.append(
+                            "Etapa 3: Evolução para óbito é obrigatório quando paciente é afetado.")
+                    if not current_data['notified_department'] or \
+                       current_data['notified_department'] == UI_TEXTS.selectbox_default_department_select: # <-- ALTERADO
+                        validation_errors.append("Etapa 4: Setor Notificado é obrigatório.")
+                    if validation_errors:
+                        st.error("⚠️ **Por favor, corrija os seguintes erros antes de enviar:**")
+                        for error in validation_errors:
+                            st.warning(error)
+                    else:
+                        notification_data_to_save = current_data.copy()
+                        uploaded_files_list = notification_data_to_save.pop('attachments', [])
+                        try:
+                            # Chama a função de criação que agora interage com o DB
+                            notification = create_notification(notification_data_to_save, uploaded_files_list)
+                            st.success(f"✅ **Notificação #{notification['id']} criada com sucesso!**")
+                            st.info(
+                                "📋 Sua notificação foi enviada para classificação e será processada pela equipe responsável.")
+                            with st.expander("�� Resumo da Notificação Enviada", expanded=False):
+                                occurrence_datetime_summary = format_date_time_summary(
+                                    notification_data_to_save.get('occurrence_date'),
+                                    notification_data_to_save.get('occurrence_time')
+                                )
+                                st.write(f"**ID:** #{notification['id']}")
+                                st.write(f"**Título:** {notification_data_to_save.get('title', UI_TEXTS.text_na)}")
+                                st.write(f"**Local:** {notification_data_to_save.get('location', UI_TEXTS.text_na)}")
+                                st.write(f"**Data/Hora do Evento:** {occurrence_datetime_summary}")
+                                st.write(
+                                    f"**Turno:** {notification_data_to_save.get('event_shift', UI_TEXTS.text_na)}")
+                                reporting_department = notification_data_to_save.get('reporting_department',
+                                                                                    UI_TEXTS.text_na)
+                                reporting_complement = notification_data_to_save.get('reporting_department_complement')
+                                reporting_dept_display = f"{reporting_department}{f' ({reporting_complement})' if reporting_complement else ''}"
+                                st.write(f"**Setor Notificante:** {reporting_dept_display}")
+                                notified_department = notification_data_to_save.get('notified_department',
+                                                                                    UI_TEXTS.text_na)
+                                notified_complement = notification_data_to_save.get('notified_department_complement')
+                                notified_dept_display = f"{notified_department}{f' ({notified_complement})' if notified_complement else ''}"
+                                st.write(f"**Setor Notificado:** {notified_dept_display}")
+                                st.write(
+                                    f"**Descrição:** {notification_data_to_save.get('description', UI_TEXTS.text_na)[:200]}..." if len(
+                                        notification_data_to_save.get('description',
+                                                                      '')) > 200 else notification_data_to_save.get(
+                                        'description', UI_TEXTS.text_na))
+                                st.write(
+                                    f"**Ações Imediatas Tomadas:** {notification_data_to_save.get('immediate_actions_taken', UI_TEXTS.text_na)}")
+                                if notification_data_to_save.get('immediate_actions_taken') == 'Sim':
+                                    st.write(
+                                        f"**Descrição Ações Imediatas:** {notification_data_to_save.get('immediate_action_description', UI_TEXTS.text_na)[:200]}..." if len(
+                                            notification_data_to_save.get('immediate_action_description',
+                                                                          '')) > 200 else notification_data_to_save.get(
+                                            'immediate_action_description', UI_TEXTS.text_na))
+                                st.write(
+                                    f"**Paciente Envolvido:** {notification_data_to_save.get('patient_involved', UI_TEXTS.text_na)}")
+                                if notification_data_to_save.get('patient_involved') == 'Sim':
+                                    st.write(
+                                        f"**N° Atendimento:** {notification_data_to_save.get('patient_id', UI_TEXTS.text_na)}")
+                                    outcome_text = 'Sim' if notification_data_to_save.get(
+                                        'patient_outcome_obito') is True else 'Não' if notification_data_to_save.get(
+                                        'patient_outcome_obito') is False else 'Não informado'
+                                    st.write(f"**Evoluiu para óbito:** {outcome_text}")
+                                if notification_data_to_save.get('additional_notes'):
+                                    st.write(
+                                        f"**Observações Adicionais:** {notification_data_to_save.get('additional_notes', UI_TEXTS.text_na)[:200]}..." if len(
+                                            notification_data_to_save.get('additional_notes',
+                                                                          '')) > 200 else notification_data_to_save.get(
+                                        'additional_notes', UI_TEXTS.text_na))
+                                if uploaded_files_list:
+                                    st.write(
+                                        f"**Anexos:** {len(uploaded_files_list)} arquivo(s) - {', '.join([f.name for f in uploaded_files_list])}")
+                                else:
+                                    st.write("**Anexos:** Nenhum arquivo anexado.")
+                            st.session_state.form_step = 5  # Muda para a etapa 5
+                            st.rerun() # CORREÇÃO: Força o re-render
+
+                        except Exception as e:
+                            st.error(f"❌ Ocorreu um erro ao finalizar a notificação: {e}")
+                            st.warning("Por favor, revise as informações e tente enviar novamente.")
 
 @st_fragment
 def show_classification():
