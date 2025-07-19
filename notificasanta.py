@@ -615,10 +615,7 @@ def init_database():
             """, ('admin', admin_password_hash, 'Administrador', 'admin@hospital.com',
                   ['admin', 'classificador', 'executor', 'aprovador'], True))
             conn.commit() # Confirma a inserção do usuário admin
-            st.toast("Usuário administrador padrão criado no banco de dados!")
-        else:
-            # Caso o usuário admin já exista, podemos dar um aviso ou apenas passar
-            
+            st.toast("Usuário administrador padrão criado no banco de dados!")         
 
 
         conn.commit() # Confirma todas as operações de criação de tabelas e índices
