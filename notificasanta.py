@@ -618,7 +618,7 @@ def init_database():
             st.toast("Usuário administrador padrão criado no banco de dados!")
         else:
             # Caso o usuário admin já exista, podemos dar um aviso ou apenas passar
-            st.info("Usuário administrador padrão já existe no banco de dados.")
+            
 
 
         conn.commit() # Confirma todas as operações de criação de tabelas e índices
