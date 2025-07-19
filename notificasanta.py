@@ -475,19 +475,22 @@ ATTACHMENTS_DIR = os.path.join(DATA_DIR, "attachments")
 
 
 # --- Funções de Persistência e Banco de Dados ---
+
 def init_database():
     """Garante que os diretórios de dados e arquivos iniciais existam e cria tabelas no DB."""
+    # Garante que os diretórios existam
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR)
     if not os.path.exists(ATTACHMENTS_DIR):
         os.makedirs(ATTACHMENTS_DIR)
 
-    conn = None
+    conn = None # Inicializa a variável de conexão para garantir que seja None em caso de erro na conexão
     try:
         conn = get_db_connection()
         cur = conn.cursor()
 
         # Criar tabelas
+        # Os comandos SQL foram limpos de duplicações e erros de sintaxe
         cur.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
@@ -546,7 +549,8 @@ def init_database():
             CREATE INDEX IF NOT EXISTS idx_notifications_search_vector ON notifications USING GIN (search_vector);
 
             -- Trigger para atualizar search_vector automaticamente
-            CREATE OR REPLACE FUNCTION update_notification_search_vector() RETURNS TRIGGER AS $
+            -- Usamos $BODY$ como delimitador, que é uma prática comum para funções PL/pgSQL
+            CREATE OR REPLACE FUNCTION update_notification_search_vector() RETURNS TRIGGER AS $BODY$
             BEGIN
                 NEW.search_vector := to_tsvector('portuguese',
                     COALESCE(NEW.title, '') || ' ' ||
@@ -557,7 +561,7 @@ def init_database():
                 );
                 RETURN NEW;
             END;
-            $ LANGUAGE plpgsql;
+            $BODY$ LANGUAGE plpgsql;
 
             -- Remover o trigger antigo se existir para evitar duplicação ou erros
             DROP TRIGGER IF EXISTS trg_notifications_search_vector ON notifications;
@@ -604,25 +608,32 @@ def init_database():
         # Adiciona usuário admin padrão se não existir
         cur.execute("SELECT COUNT(*) FROM users WHERE username = 'admin'")
         if cur.fetchone()[0] == 0:
-            admin_password_hash = hash_password("6105/*")
+            admin_password_hash = hash_password("6105/*") # Hash da senha padrão
             cur.execute("""
                 INSERT INTO users (username, password_hash, name, email, roles, active)
                 VALUES (%s, %s, %s, %s, %s, %s)
             """, ('admin', admin_password_hash, 'Administrador', 'admin@hospital.com',
                   ['admin', 'classificador', 'executor', 'aprovador'], True))
-            conn.commit()
+            conn.commit() # Confirma a inserção do usuário admin
             st.toast("Usuário administrador padrão criado no banco de dados!")
+        else:
+            # Caso o usuário admin já exista, podemos dar um aviso ou apenas passar
+            st.info("Usuário administrador padrão já existe no banco de dados.")
 
-        conn.commit()
-        cur.close()
+
+        conn.commit() # Confirma todas as operações de criação de tabelas e índices
+        cur.close() # Fecha o cursor após o uso
+
     except psycopg2.Error as e:
+        # Em caso de qualquer erro de banco de dados, exibe uma mensagem e faz rollback
         st.error(f"Erro ao inicializar o banco de dados: {e}")
         if conn:
-            conn.rollback()
+            conn.rollback() # Reverte quaisquer alterações incompletas
+
     finally:
+        # Garante que a conexão seja fechada, mesmo que ocorra um erro
         if conn:
             conn.close()
-
 
 def load_users() -> List[Dict]:
     """Carrega dados de usuário do banco de dados."""
