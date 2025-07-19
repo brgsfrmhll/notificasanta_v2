@@ -1,13 +1,3 @@
-# notificasanta_refatorado.py - Código completo refatorado
-# [INSTRUÇÕES]
-# Este arquivo foi gerado a partir do código original com as seguintes melhorias:
-# - Remoção do uso de st.fragment para evitar problemas de clique duplo
-# - Garantia de chaves únicas para todos os elementos interativos
-# - Navegação entre páginas sem uso excessivo de st.rerun()
-# - Sessões totalmente isoladas por usuário com st.session_state
-# - Toda a lógica do sistema original foi preservada
-
-# [CÓDIGO BASE COMPLETO]
 import streamlit as st
 import json
 import hashlib
