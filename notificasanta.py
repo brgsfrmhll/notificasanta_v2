@@ -1410,13 +1410,13 @@ def show_sidebar():
                 if 'current_review_classification_id' in st.session_state: st.session_state.pop(
                     'current_review_classification_id')
                 if 'approval_form_state' in st.session_state: st.session_state.pop('approval_form_state')
-                return  # MODIFICADO: substitui st.rerun() por return
+                st.rerun()
 
             if 'classificador' in user_roles or 'admin' in user_roles:  # Adicione esta linha de verificação
                 if st.button("📊 Dashboard de Notificações", key="nav_dashboard", use_container_width=True):
                     st.session_state.page = 'dashboard'
                     _reset_form_state()
-                    return  # MODIFICADO: substitui st.rerun() por return
+                    st.rerun()
 
             if 'classificador' in user_roles or 'admin' in user_roles:
                 if st.button("🔍 Classificação/Revisão", key="nav_classification",
@@ -1432,7 +1432,7 @@ def show_sidebar():
                     if 'current_review_classification_id' in st.session_state: st.session_state.pop(
                         'current_review_classification_id')
                     if 'approval_form_state' in st.session_state: st.session_state.pop('approval_form_state')
-                    return  # MODIFICADO: substitui st.rerun() por return
+                    st.rerun()
 
             if 'executor' in user_roles or 'admin' in user_roles:
                 if st.button("⚡ Execução", key="nav_execution", use_container_width=True):
@@ -1447,7 +1447,7 @@ def show_sidebar():
                     if 'current_review_classification_id' in st.session_state: st.session_state.pop(
                         'current_review_classification_id')
                     if 'approval_form_state' in st.session_state: st.session_state.pop('approval_form_state')
-                    return  # MODIFICADO: substitui st.rerun() por return
+                    st.rerun()
 
             if 'aprovador' in user_roles or 'admin' in user_roles:
                 if st.button("✅ Aprovação", key="nav_approval", use_container_width=True):
@@ -1462,7 +1462,7 @@ def show_sidebar():
                     if 'current_review_classification_id' in st.session_state: st.session_state.pop(
                         'current_review_classification_id')
                     if 'approval_form_state' in st.session_state: st.session_state.pop('approval_form_state')
-                    return  # MODIFICADO: substitui st.rerun() por return
+                    st.rerun()
 
             if 'admin' in user_roles:
                 if st.button("⚙️ Administração", key="nav_admin", use_container_width=True):
@@ -1477,7 +1477,7 @@ def show_sidebar():
                     if 'current_review_classification_id' in st.session_state: st.session_state.pop(
                         'current_review_classification_id')
                     if 'approval_form_state' in st.session_state: st.session_state.pop('approval_form_state')
-                    return  # MODIFICADO: substitui st.rerun() por return
+                    st.rerun()
 
             st.markdown("---")
             if st.button("🚪 Sair", key="nav_logout", use_container_width=True):
@@ -1501,7 +1501,7 @@ def show_sidebar():
                             st.session_state.page = 'classification'
                         else:
                             st.session_state.page = 'create_notification'
-                        return  # MODIFICADO: substitui st.rerun() por return
+                        st.rerun()
                     else:
                         st.error("Usuário ou senha inválidos!")
             st.markdown("---")
@@ -4386,7 +4386,7 @@ def show_admin():
                                  'email': email_state, 'roles': roles_to_save}
                     if create_user(user_data):
                         st.success(f"✅ Usuário '{name_state}' criado com sucesso!\n\n")
-                        return  # MODIFICADO: substitui st.rerun() por return
+                        st.rerun()
                     else:
                         st.error("❌ Nome de usuário já existe. Por favor, escolha outro.")
 
@@ -4444,7 +4444,7 @@ def show_admin():
                                                                                         [])
                                 st.session_state[f"edit_active_{user['id']}"] = user.get(
                                     'active', True)
-                                return  # Redesenha o fragmento
+                                st.rerun()
 
                             action_text = "🔒 Desativar" if user.get('active',
                                                                     True) else "🔓 Ativar"
@@ -4459,7 +4459,7 @@ def show_admin():
                                         'active'] else "ativado"
                                     st.success(
                                         f"✅ Usuário '{user.get('name', UI_TEXTS.text_na)}' {status_msg} com sucesso.")
-                                    return  # Redesenha o fragmento
+                                    st.rerun() 
                                 else:
                                     st.error("❌ Erro ao atualizar status do usuário.")
                         elif user.get('id') == 1:
@@ -4574,13 +4574,13 @@ def show_admin():
                                     st.success(
                                         f"✅ Usuário '{updated_user_final.get('name', UI_TEXTS.text_na)}' atualizado com sucesso!")
                                     st.session_state.editing_user_id = None
-                                    return  # MODIFICADO: substitui st.rerun() por return
+                                    st.rerun()
                                 else:
                                     st.error("❌ Erro ao salvar alterações do usuário.")
 
                         if cancel_edit_button:
                             st.session_state.editing_user_id = None
-                            return  # MODIFICADO: substitui st.rerun() por return
+                            st.rerun()
 
         else:
             st.info("📋 Nenhum usuário cadastrado no sistema.")
@@ -4830,7 +4830,7 @@ def show_admin():
                                     st.session_state.current_initial_classification_id = None
                                     st.session_state.current_review_classification_id = None
                                     st.session_state.approval_form_state = {}
-                                    return  # MODIFICADO: substitui st.rerun() por return
+                                    st.rerun()
                                 except psycopg2.Error as e:
                                     conn.rollback()
                                     st.error(
